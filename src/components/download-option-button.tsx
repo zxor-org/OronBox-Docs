@@ -43,8 +43,7 @@ export function DownloadOptionButton({
       className={cn(
         'inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium no-underline',
         'transition-[background-color,color,border-radius,transform,box-shadow] duration-300',
-        'ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:shadow-md',
-        'active:translate-y-0 active:scale-95 active:rounded-lg',
+        'ease-[cubic-bezier(0.34,1.56,0.64,1)]',
         recommended
           ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
           : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--color-fd-foreground)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)]',

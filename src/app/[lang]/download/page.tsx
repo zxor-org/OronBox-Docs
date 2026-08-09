@@ -43,7 +43,6 @@ const copy = {
       en: 'Pick your platform and start managing your wearables',
     },
     prerelease: { zh: '预发布版本', en: 'Prerelease' },
-    allPlatforms: { zh: '查看全部平台', en: 'All platforms' },
     download: { zh: '下载', en: 'Download' },
     downloadFor: {
       windows: { zh: ' Windows 版', en: ' for Windows' },
@@ -242,12 +241,6 @@ export default async function DownloadPage({
               className="min-h-14 px-8 text-base"
               linuxOptions={linuxOptions}
             />
-            <a
-              href="#all"
-              className="inline-flex min-h-12 items-center rounded-full px-6 text-sm font-semibold text-[var(--md-sys-color-primary)] no-underline ring-1 ring-inset ring-[var(--md-sys-color-outline-variant)] transition-[background-color,color,border-radius,transform] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] hover:ring-transparent active:translate-y-0 active:scale-95 active:rounded-lg"
-            >
-              {pick(copy.hero.allPlatforms)}
-            </a>
           </div>
         </div>
       </section>
@@ -345,7 +338,7 @@ export default async function DownloadPage({
               {release.checksumsUrl && (
                 <ProxiedAnchor
                   href={release.checksumsUrl}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-high)] px-4 text-sm font-medium text-[var(--color-fd-foreground)] no-underline transition-[background-color,color,border-radius,transform] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)] active:translate-y-0 active:scale-95 active:rounded-lg"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-high)] px-4 text-sm font-medium text-[var(--color-fd-foreground)] no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)]"
                 >
                   <FileCheck2 className="size-4" />
                   {pick(copy.footer.checksums)}
@@ -353,7 +346,7 @@ export default async function DownloadPage({
               )}
               <ProxiedAnchor
                 href={release.pageUrl.replace(/\/tag\/.*$/, '')}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-high)] px-4 text-sm font-medium text-[var(--color-fd-foreground)] no-underline transition-[background-color,color,border-radius,transform] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)] active:translate-y-0 active:scale-95 active:rounded-lg"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-high)] px-4 text-sm font-medium text-[var(--color-fd-foreground)] no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)]"
               >
                 <History className="size-4" />
                 {pick(copy.footer.allReleases)}

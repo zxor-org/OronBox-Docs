@@ -16,15 +16,15 @@ export function baseOptions(lang: string): BaseLayoutProps {
       ),
     },
     links: [
-      {
-        text: lang === 'zh' ? '下载' : 'Download',
-        url: withLocale(lang, '/download'),
-      },
       ...sections.map((section) => ({
         text: section.title[lang as 'zh' | 'en'] ?? section.title.zh,
         url: withLocale(lang, section.url),
         active: 'nested-url' as const,
       })),
+      {
+        text: lang === 'zh' ? '下载' : 'Download',
+        url: withLocale(lang, '/download'),
+      },
     ],
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
   };

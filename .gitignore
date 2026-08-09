@@ -4,6 +4,9 @@
 # generated content
 .source
 
+# fetched web build (regenerated on every build)
+public/web
+
 # raw reference material migrated from the OronBox repo (not part of the build)
 .reference/
 

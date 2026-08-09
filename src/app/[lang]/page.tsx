@@ -8,8 +8,10 @@ import {
   Boxes,
   Code2,
   FileText,
+  Globe,
   Info,
   MessageCircle,
+  Package,
   Palette,
   Puzzle,
   Server,
@@ -32,16 +34,31 @@ type Locale = 'zh' | 'en';
 const copy = {
   hero: {
     subtitle: {
-      zh: '跨平台可穿戴设备管理工具',
-      en: 'Cross-platform wearable device manager',
+      zh: '一个又好看又快的 VelaOS / ZeppOS 可穿戴设备管理软件，使用 Flutter 构建',
+      en: 'A beautiful and fast VelaOS / ZeppOS wearable device manager, built with Flutter',
     },
     description: {
       zh: '无需官方客户端，即可连接、管理 VelaOS / 小米与 ZeppOS 设备\n从社区资源库安装应用、表盘与插件',
       en: 'Connect and manage VelaOS / Xiaomi and ZeppOS devices without the official client\nInstall apps, watchfaces and plugins from community registries',
     },
+    derivedFrom: {
+      prefix: { zh: '衍生自 ', en: 'Derived from ' },
+      links: [
+        {
+          text: 'AstroBox-NG',
+          href: 'https://github.com/AstralSightStudios/AstroBox-NG',
+        },
+        {
+          text: 'GadgetBridge',
+          href: 'https://codeberg.org/Freeyourgadget/Gadgetbridge',
+        },
+      ],
+    },
   },
   cta: {
-    primary: { zh: '开始使用', en: 'Get Started' },
+    primary: { zh: '快速上手', en: 'Quick Start' },
+    github: { zh: 'GitHub', en: 'GitHub' },
+    webOnline: { zh: '使用 Web 版', en: 'Use web version' },
     download: { zh: '下载', en: 'Download' },
     downloadFor: {
       windows: { zh: ' Windows 版', en: ' for Windows' },
@@ -50,7 +67,7 @@ const copy = {
       android: { zh: ' Android 版', en: ' for Android' },
       web: { zh: ' Web 版', en: ' for Web' },
     },
-    downloadFallback: { zh: '前往下载页', en: 'All downloads' },
+    downloadFallback: { zh: '更多下载选项', en: 'More download options' },
   },
   preview: {
     title: { zh: '界面一览', en: 'Take a look' },
@@ -186,11 +203,9 @@ function DockLink({
       href={href}
       className={cn(
         'inline-flex min-h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold no-underline',
-        'transition-[background-color,color,border-radius,transform,box-shadow] duration-300',
-        'ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:shadow-lg',
-        'active:translate-y-0 active:scale-95 active:rounded-lg',
+        'transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
         variant === 'filled'
-          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:brightness-105'
           : 'text-[var(--md-sys-color-primary)] ring-1 ring-inset ring-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:ring-[var(--md-sys-color-outline)]',
       )}
     >
@@ -253,28 +268,65 @@ export default async function HomePage({
           >
             {pick(copy.hero.description)}
           </p>
+          <p
+            className="hero-rise mt-1 text-[0.875rem] leading-[1.65] text-fd-muted-foreground sm:text-base"
+            style={{ '--rise-delay': '260ms' } as CSSProperties}
+          >
+            {pick(copy.hero.derivedFrom.prefix)}
+            <a
+              href={copy.hero.derivedFrom.links[0].href}
+              target="_blank"
+              rel="noreferrer"
+              className="underline decoration-current underline-offset-2 transition-opacity hover:opacity-80"
+            >
+              {copy.hero.derivedFrom.links[0].text}
+            </a>
+            {' & '}
+            <a
+              href={copy.hero.derivedFrom.links[1].href}
+              target="_blank"
+              rel="noreferrer"
+              className="underline decoration-current underline-offset-2 transition-opacity hover:opacity-80"
+            >
+              {copy.hero.derivedFrom.links[1].text}
+            </a>
+          </p>
         </div>
         <div
-          className="hero-rise z-10 mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
+          className="hero-rise z-10 mt-6 flex flex-col items-center gap-2 sm:gap-3"
           style={{ '--rise-delay': '320ms' } as CSSProperties}
         >
-          <DockLink href={withLocale(lang, '/user')} icon={ArrowRight}>
-            {pick(copy.cta.primary)}
-          </DockLink>
-          <DownloadButton
-            picks={picks}
-            texts={downloadTexts}
-            downloadPageHref={withLocale(lang, '/download')}
-            variant="tonal"
-            linuxOptions={linuxOptions}
-          />
-          <DockLink
-            href="https://github.com/zxor-org/OronBox"
-            icon={Star}
-            variant="outlined"
-          >
-            GitHub
-          </DockLink>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            <DockLink href={withLocale(lang, '/user')} icon={ArrowRight}>
+              {pick(copy.cta.primary)}
+            </DockLink>
+            <DownloadButton
+              picks={picks}
+              texts={downloadTexts}
+              downloadPageHref={withLocale(lang, '/download')}
+              variant="tonal"
+              linuxOptions={linuxOptions}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            <DockLink href="/web" icon={Globe} variant="outlined">
+              {pick(copy.cta.webOnline)}
+            </DockLink>
+            <DockLink
+              href={withLocale(lang, '/download')}
+              icon={Package}
+              variant="outlined"
+            >
+              {pick(copy.cta.downloadFallback)}
+            </DockLink>
+            <DockLink
+              href="https://github.com/zxor-org/OronBox"
+              icon={Star}
+              variant="outlined"
+            >
+              {pick(copy.cta.github)}
+            </DockLink>
+          </div>
         </div>
       </section>
 
@@ -370,7 +422,7 @@ export default async function HomePage({
             return (
               <Reveal key={feature.title.zh} delay={i * 80}>
                 <div
-                  className="h-full rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 transition-[border-radius,transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:shadow-lg"
+                  className="h-full rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                 >
                   <span
                     className="mb-4 inline-flex size-12 items-center justify-center rounded-2xl"
@@ -401,7 +453,7 @@ export default async function HomePage({
               <Reveal key={section.slug} delay={i * 80}>
                 <Link
                   href={withLocale(lang, section.url)}
-                  className="group flex h-full flex-col rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 no-underline transition-[border-radius,transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:shadow-lg"
+                  className="group flex h-full flex-col rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                 >
                   <span
                     className="mb-4 inline-flex size-12 items-center justify-center self-start rounded-2xl"
@@ -411,7 +463,7 @@ export default async function HomePage({
                   </span>
                   <h2 className="mb-1 flex items-center gap-1 text-lg font-medium text-[var(--color-fd-foreground)]">
                     {pick(section.title)}
-                    <ArrowRight className="size-4 opacity-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-1 group-hover:opacity-100" />
+                    <ArrowRight className="size-4 opacity-0 transition-opacity duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:opacity-100" />
                   </h2>
                   <p className="text-sm leading-[1.65] text-fd-muted-foreground">
                     {pick(section.description)}
@@ -440,7 +492,7 @@ export default async function HomePage({
             <Reveal key={link.title} delay={160 + i * 80}>
               <Link
                 href={link.href}
-                className="group flex h-full flex-col items-center gap-2 rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 text-center no-underline transition-[border-radius,transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:shadow-lg"
+                className="group flex h-full flex-col items-center gap-2 rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 text-center no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
               >
                 <link.icon className="size-6 text-[var(--md-sys-color-primary)]" />
                 <span className="font-medium text-[var(--color-fd-foreground)]">
@@ -464,23 +516,6 @@ export default async function HomePage({
         >
           OronBox Docs
         </Link>
-        <span className="mt-2 block text-xs text-fd-muted-foreground/80">
-          Derived from{' '}
-          <Link
-            href="https://github.com/AstralSightStudios/AstroBox-NG"
-            className="no-underline hover:text-[var(--color-fd-foreground)]"
-          >
-            AstroBox-NG
-          </Link>{' '}
-          &amp;{' '}
-          <Link
-            href="https://codeberg.org/Freeyourgadget/Gadgetbridge"
-            className="no-underline hover:text-[var(--color-fd-foreground)]"
-          >
-            GadgetBridge
-          </Link>
-          .
-        </span>
       </footer>
     </HomeLayout>
   );

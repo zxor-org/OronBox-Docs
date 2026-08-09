@@ -1,15 +1,27 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import '../global.css';
 import { i18n, i18nUI } from '@/lib/i18n';
+import type { Metadata } from 'next';
 
-export const metadata = {
-  icons: {
-    icon: [
-      { url: '/icon.svg', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark.svg', media: '(prefers-color-scheme: dark)' },
-    ],
-  },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  await params;
+  return {
+    title: {
+      default: 'OronBox',
+      template: '%s - OronBox',
+    },
+    icons: {
+      icon: [
+        { url: '/icon.svg', media: '(prefers-color-scheme: light)' },
+        { url: '/icon-dark.svg', media: '(prefers-color-scheme: dark)' },
+      ],
+    },
+  };
+}
 
 export default async function Layout({
   children,
