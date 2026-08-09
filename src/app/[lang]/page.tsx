@@ -19,6 +19,7 @@ import {
   Star,
   Terminal,
   Upload,
+  Users,
 } from 'lucide-react';
 import { withLocale } from '@/lib/i18n';
 import { baseOptions } from '@/lib/layout.shared';
@@ -38,8 +39,8 @@ const copy = {
       en: 'A beautiful and fast VelaOS / ZeppOS wearable device manager, built with Flutter',
     },
     description: {
-      zh: '无需官方客户端，即可连接、管理 VelaOS / 小米与 ZeppOS 设备\n从社区资源库安装应用、表盘与插件',
-      en: 'Connect and manage VelaOS / Xiaomi and ZeppOS devices without the official client\nInstall apps, watchfaces and plugins from community registries',
+      zh: '无需官方客户端，即可连接并管理 小米VelaOS / 华米ZeppOS 设备\n从社区资源库安装应用、表盘与插件',
+      en: 'Connect and manage Xiaomi VelaOS / Amazfit ZeppOS devices without the official client\nInstall apps, watchfaces and plugins from community registries',
     },
     derivedFrom: {
       prefix: { zh: '衍生自 ', en: 'Derived from ' },
@@ -111,15 +112,15 @@ const copy = {
         icon: Puzzle,
         title: { zh: '插件系统', en: 'Plugin system' },
         description: {
-          zh: 'QuickJS 沙箱运行时，支持 WASM 与混合模式\n插件能力可扩展',
-          en: 'QuickJS-sandboxed plugins\nWASM and hybrid runtimes for extensibility',
+          zh: '高性能 QuickJS 沙箱运行时\n支持 WASM 混合模式',
+          en: 'High-performance QuickJS sandbox runtime\nWASM and hybrid modes supported',
         },
       },
       {
         icon: ShieldCheck,
         title: { zh: '本地优先', en: 'Local-first' },
         description: {
-          zh: '设备连接凭据与数据默认保存在本机\n资源操作过程透明可控',
+          zh: '设备连接凭据与数据默认保存在本机',
           en: 'Device credentials and data stay on your machine by default',
         },
       },
@@ -136,7 +137,7 @@ const copy = {
   platforms: {
     title: { zh: '平台支持', en: 'Platform support' },
     hint: {
-      zh: '各平台连接能力与功能完整度不同，详见用户文档',
+      zh: '各平台连接能力与功能支持程度不同，详见用户文档',
       en: 'Connectivity and feature completeness vary per platform — see the user guide',
     },
     items: ['Windows', 'macOS', 'Linux', 'Android', 'Web'],
@@ -150,19 +151,25 @@ const copy = {
     links: [
       {
         icon: Code2,
-        title: 'OronBox',
+        title: { zh: 'OronBox', en: 'OronBox' },
         description: { zh: '客户端源码', en: 'Client source code' },
         href: 'https://github.com/zxor-org/OronBox',
       },
       {
         icon: Server,
-        title: 'OronBox-Server',
+        title: { zh: 'OronBox-Server', en: 'OronBox-Server' },
         description: { zh: '服务端源码', en: 'Server source code' },
         href: 'https://github.com/zxor-org/OronBox-Server',
       },
       {
+        icon: Users,
+        title: { zh: 'QQ 群', en: 'QQ Group' },
+        description: { zh: '加入 QQ 群', en: 'Join the QQ group' },
+        href: 'https://qm.qq.com/q/il3TbmJlKM',
+      },
+      {
         icon: MessageCircle,
-        title: 'Discussions',
+        title: { zh: 'Discussions', en: 'Discussions' },
         description: { zh: '公开讨论区', en: 'Public discussions' },
         href: 'https://github.com/zxor-org/OronBox/discussions',
       },
@@ -489,14 +496,14 @@ export default async function HomePage({
         </Reveal>
         <div className="grid gap-4 sm:grid-cols-3">
           {copy.community.links.map((link, i) => (
-            <Reveal key={link.title} delay={160 + i * 80}>
+            <Reveal key={link.title.zh} delay={160 + i * 80}>
               <Link
                 href={link.href}
                 className="group flex h-full flex-col items-center gap-2 rounded-[28px] bg-[var(--md-sys-color-surface-container-low)] p-6 text-center no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
               >
                 <link.icon className="size-6 text-[var(--md-sys-color-primary)]" />
                 <span className="font-medium text-[var(--color-fd-foreground)]">
-                  {link.title}
+                  {pick(link.title)}
                 </span>
                 <span className="text-sm text-fd-muted-foreground">
                   {pick(link.description)}

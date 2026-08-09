@@ -12,7 +12,7 @@ export const sections = [
     url: '/user',
     title: { zh: '用户文档', en: 'User Guide' },
     description: {
-      zh: '安装、连接设备、资源库与插件的日常使用',
+      zh: '安装、连接设备，以及资源库与插件的日常使用',
       en: 'Install, connect devices, and use the registry and plugins',
     },
   },
@@ -21,8 +21,8 @@ export const sections = [
     url: '/creator',
     title: { zh: '创作者文档', en: 'Creator Guide' },
     description: {
-      zh: '发布表盘与快应用、草稿、审核与合集',
-      en: 'Publish watchfaces and quick apps, drafts, review, and collections',
+      zh: '发布表盘与快应用，管理草稿、审核与合集',
+      en: 'Publish watchfaces and quick apps; manage drafts, reviews, and collections',
     },
   },
   {

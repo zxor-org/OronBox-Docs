@@ -7,7 +7,7 @@
  * unreachable the build continues without a web build (public/web stays as
  * it was or absent).
  */
-import { mkdir, rm, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -81,6 +81,29 @@ async function main() {
     );
     p.on('error', reject);
   });
+
+  // Flutter web zips nest everything under a top-level web/ directory;
+  // flatten it so index.html sits directly in public/web.
+  const nested = fileURLToPath(new URL('../public/web/web', import.meta.url));
+  try {
+    if ((await stat(nested)).isDirectory()) {
+      for (const entry of await readdir(nested)) {
+        await rename(`${nested}/${entry}`, `${OUT_DIR}/${entry}`);
+      }
+      await rm(nested, { recursive: true, force: true });
+    }
+  } catch {
+    // No nested web/ directory; nothing to flatten.
+  }
+
+  // The docs site serves the build under /web/, but flutter build web only
+  // writes the requested base href when given --base-href at build time.
+  // Rewrite it here so asset URLs resolve regardless of how the zip was built.
+  const indexFile = fileURLToPath(new URL('../public/web/index.html', import.meta.url));
+  let html = await readFile(indexFile, 'utf8');
+  html = html.replace('<base href="/">', '<base href="/web/">');
+  await writeFile(indexFile, html);
+
   await writeFile(VERSION_FILE, `${release.tag_name}\n`);
   await rm(TMP_ZIP, { force: true });
   console.log(`[fetch-web] deployed ${release.tag_name} (${asset.name}, ${bytes.length} bytes)`);
