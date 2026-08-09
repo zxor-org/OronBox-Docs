@@ -4,3 +4,8 @@ allowBuilds:
 onlyBuiltDependencies:
   - esbuild
   - sharp
+# style-to-js 1.0.0 ships TS-compiled CJS (exports.default, no module.exports),
+# which breaks native ESM default-import interop on some build hosts. 1.1.21
+# also sets module.exports, working under both interop styles.
+overrides:
+  style-to-js: 1.1.21
