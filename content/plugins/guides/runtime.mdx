@@ -1,0 +1,249 @@
+---
+title: 运行时
+description: 插件运行时模型：四种 runtime、WASI 沙箱、宿主 API 与 UI 树
+---
+
+插件代码在 OronBox 内的沙箱运行时中执行
+
+运行时决定了插件入口用什么语言、宿主能力怎么注入、文件系统如何暴露
+
+## 运行时类型
+
+`manifest.json` 的 `runtime` 字段决定插件使用哪种运行时；缺省该字段即为 legacy
+
+| `runtime` 值 | 执行引擎 | 入口文件 |
+| --- | --- | --- |
+| `js` | QuickJS 沙箱 | `.js` / `.mjs` / `.cjs` |
+| `wasm` | WASI 沙箱 | `.wasm` |
+| `hybrid` | JS 引擎 + 额外的 WASM 模块 | `.js` / `.mjs` / `.cjs` |
+| （缺省） | 与 `js` 相同的引擎，注入 AstroBox v1 兼容层 | JS |
+
+合法值为 `js`、`wasm`、`hybrid`，其他值在解析 manifest 时直接拒绝
+
+- `js` 插件：入口 JS 在 QuickJS 沙箱中执行，宿主 API 通过 `OronBox` 全局对象暴露
+- `wasm` 插件：入口 `.wasm` 在 WASI 沙箱中执行，宿主调用走 wasm 导入函数；不注入 JS 引导，因此没有 `setTimeout` / `setInterval` 等定时器接口
+- `hybrid` 插件：入口 JS 与 `js` 相同，但额外允许通过 `OronBox.wasm` 加载并调用 `.wasm` 模块
+- legacy 插件：`runtime` 字段缺省，入口仍由 JS 引擎执行，但注入的是 AstroBox v1 兼容层（全局对象为 `AstroBox`，而非 `OronBox`）
+
+## 沙箱与文件系统
+
+插件存储按虚拟路径暴露为四个根目录：
+
+| 根路径 | 区域 | 读写性 |
+| --- | --- | --- |
+| `/plugin` | package | 只读（安装时的包内容，含入口与资源文件） |
+| `/data` | data | 可写 |
+| `/cache` | cache | 可写 |
+| `/temp` | temporary | 可写 |
+
+`/plugin` 的只读性由宿主强制执行
+
+WASI 沙箱只开放文件系统与标准输入输出能力，没有网络、时钟、环境变量等其他 WASI 能力
+
+## WASM 插件
+
+### 实例化
+
+入口 `.wasm` 必须导出以下其一作为启动入口：
+
+- `oronbox_start`（OronBox 专有）
+- `_start`（标准 WASI）
+
+两者都不存在则启动失败；stdout / stderr 被捕获，分别作为 `log.info` / `log.error` 上报
+
+### 宿主函数注入
+
+WASM 模块通过导入表获得宿主能力，导入模块名统一为 `oronbox`，共 5 个函数：
+
+| 导入 | 签名 | 说明 |
+| --- | --- | --- |
+| `request` | `(methodPtr, methodLen, argsPtr, argsLen) -> i32` | 发起一次宿主调用，方法名与参数数组以 UTF-8 写入插件内存，返回请求 id |
+| `poll` | `(requestId) -> i32` | 查询请求状态：`0` 进行中，`1` 成功，`2` 失败；请求不存在返回 `-1` |
+| `result_len` | `(requestId) -> i32` | 响应字节长度；请求不存在返回 `-1` |
+| `result_read` | `(requestId, pointer, capacity) -> i32` | 拷贝响应到插件内存；容量不足返回负的所需长度 |
+| `result_drop` | `(requestId)` | 释放请求结果 |
+
+请求是异步的：`request` 立即返回 id，结果由宿主在后台填充，`poll` / `result_len` / `result_read` 轮询读取；请求完成时宿主会调用实例导出 `oronbox_on_result(requestId)`
+
+响应体是 UTF-8 编码的 JSON：
+
+```json
+{"ok": true, "value": <返回值>}
+```
+
+失败时：
+
+```json
+{"ok": false, "error": "<错误信息>"}
+```
+
+### 插件必须导出的其他符号
+
+| 导出 | 说明 |
+| --- | --- |
+| `oronbox_alloc(len) -> i32` | 分配宿主调用时用来写参数 / 读结果的内存，返回指针 |
+| `oronbox_free(ptr, len)` | 释放对应内存 |
+| `oronbox_callback(callbackId, jsonArguments)` | 接收宿主回调（如 provider 查询、UI 事件），参数为两个 `(ptr, len)` 对 |
+| `oronbox_event(name, payload)` | 接收事件（如 `protocol.data`），payload 为字符串，同样 `(ptr, len)` 对 |
+| `oronbox_on_result(requestId)` | 宿主调用完成后被调用一次 |
+
+`oronbox_alloc` 必须存在——宿主向 WASM 传入字符串和读取字符串结果都依赖它
+
+## 宿主 API：`OronBox` 全局对象
+
+JS 运行时（js / hybrid）注入一个冻结的全局对象 `OronBox`（不可写、不可配置），包含下列命名空间：
+
+| 命名空间 | 方法 |
+| --- | --- |
+| `storage` | `get(key)` `set(key, value)` `remove(key)` `clear()` |
+| `file` | `read(path, options)` `write(path, data, options)` `list(path)` `stat(path)` `mkdir(path)` `copy(source, destination)` `move(source, destination)` `remove(path)` `pick(options)` `unload(path, options)` |
+| `network` | `fetch(url, options)` `download(url, path, options)` |
+| `interconnect` | `send(packageName, data)` `onMessage(fn)`（返回退订函数） |
+| `provider` | `register(definition)` `unregister(id)` |
+| `device` | `list()` `info(id)` `connect(id)` `disconnect(id)` `apps.list(id)` `apps.launch(packageName, options)` `apps.uninstall(packageName)` `install(path, options)` |
+| `protocol` | `send(data, options)` `request(data, options)` `observe(fn)`（返回退订函数） |
+| `os` | `arch()` `hostname()` `locale()` `platform()` `version()` `language()` `appearance()` `timezone()` |
+| `watchface` | `list(deviceId)` `set(watchfaceId, deviceId)` |
+| `appside` | `list()` `start(appId)` `stop(appId)` `send(appId, hexData)` `inject(appId, hexData)` `sessions()` `events(appId)` `clearEvents(appId)` `attach(options)` |
+| `ui` | `render(tree)` `update(nodes)` `openPage(tree)` `openExternal(url)` `getRenderSize()` `dialog(opts)` `callback(fn)` `action(fn, render)` + 节点构造器（`Column`、`Row`、`Text`、`Button`、`Image` 等） |
+| `wasm` | `load(path, options)` |
+
+### 调用语义
+
+宿主分发是异步的，JS 侧的返回值语义：
+
+- 宿主返回非 Promise 的值：调用立即返回该值
+- 宿主返回 Promise：JS 侧得到 Promise，`.then` / `await` 可取得结果
+
+需要等待的结果（如 `network.fetch`、`device.connect`、`file.read`、`protocol.request`、`ui.dialog`）在 JS 侧都是 Promise
+
+### 二进制数据编码
+
+宿主与 JS 之间不直接传二进制，统一用 base64 字符串，个别场景用 UTF-8 文本：
+
+- `file.read`：默认返回 base64；`options.encoding` 为 `utf8` / `utf-8` / `text` 时返回解码后的字符串，支持 `options.offset` / `options.length` 切片
+- `file.write`：`data` 默认按 base64 解码；`options.encoding` 为文本时按 UTF-8 编码，`options.append` 为 true 时追加写入
+- `protocol.request`：返回 `{data: base64}`（原始协议响应）
+- `protocol.send`：`data` 按 base64 解码为原始字节发送
+- `network.fetch`：请求体 `options.body` 先尝试按 base64 解码，解码失败则按 UTF-8；响应返回 `{status, headers, contentType, body}`，其中 `body` 是 base64；响应体超过 16 MiB 时报错，需改用 `network.download`
+- `appside.send` / `appside.inject`：`hexData` 为十六进制字符串
+
+### 各方法响应结构
+
+| 方法 | 响应 |
+| --- | --- |
+| `storage.get` | 存的值（任意 JSON），未设置时为 `null` |
+| `storage.set` / `remove` / `clear` | `null` |
+| `file.read` | base64 或 UTF-8 字符串 |
+| `file.write` / `mkdir` / `copy` / `move` / `remove` | `null` |
+| `file.list` | `[{path, size, isDirectory}]` |
+| `file.stat` | `{path, size, isDirectory}` 或 `null` |
+| `file.pick` | `{name, path, size}`，取消时 `null` |
+| `file.unload` | `{exported, cancelled?, name?}` |
+| `network.fetch` | `{status, headers, contentType, body}` 或 `{error}` |
+| `network.download` | `{path, bytesWritten, status}` |
+| `interconnect.send` | `null` |
+| `provider.register` / `unregister` | `null` |
+| `device.list` | `[{id, name, connectType, codename?, connected, current}]` |
+| `device.info` / `connect` | `{id, name, codename?, battery?, model?, firmwareVersion?}` |
+| `device.apps.list` | `[{packageName, name, versionCode, canRemove}]` |
+| `device.apps.launch` / `uninstall` / `device.install` | `null` |
+| `protocol.request` | `{data: base64}` |
+| `protocol.send` | `null` |
+| `os.arch` / `hostname` / `locale` / `platform` / `version` / `language` | 字符串；`os.timezone` 为整数（分钟） |
+| `os.appearance` | `"dark"` 或 `"light"` |
+| `watchface.list` | `[{id, name, current}]` |
+| `watchface.set` | `null` |
+| `appside.list` | 数字数组 |
+| `appside.sessions` | `[{appId, version, port1, port2, extra, watchSessionOpen}]` |
+| `appside.events` | `[{timestamp, type, message, direction?, source?, payload?}]`（payload 为 base64） |
+| `ui.getRenderSize` | `{width, height}` |
+| `ui.dialog` | `{clickedBtnId}` 或 `{cancelled: true}` |
+
+### 事件载荷（protocol / interconnect）
+
+`OronBox.protocol.observe(fn)` 与 `OronBox.interconnect.onMessage(fn)` 注册的事件回调收到字符串载荷，回调内部会 `JSON.parse`（legacy 事件除外，见下）：
+
+- `protocol.data`：`{"data": "<base64>"}`——原始协议帧的 base64
+- `interconnect`：`{"packageName": "<包名>", "data": "<utf8 解码后的文本>"}`
+- legacy 插件：事件名为 `onQAICMessage_<包名>`，载荷为原始文本（不 JSON 解析）
+
+### `OronBox.wasm`
+
+`OronBox.wasm.load(path, options)` 从插件存储读取 `.wasm` 字节（`options.wasi` 不为 `false` 时挂上 WASI 沙箱），实例化后返回冻结对象：
+
+```js
+const mod = await OronBox.wasm.load('/lib/codec.wasm');
+const id = mod.id; // "wasm_1"
+mod.call('exportName', arg1, arg2);          // 调用导出函数，返回导出值数组
+mod.readMemory(offset, length, 'memory');    // 读内存，返回 base64
+mod.writeMemory(offset, data, 'memory');     // 写内存，data 为 base64
+mod.dispose();                               // 销毁实例
+```
+
+- `id` 形如 `wasm_1`，递增分配
+- `call` 的返回是导出函数的返回值数组
+- `readMemory` / `writeMemory` 的 `memory` 参数默认 `'memory'`
+- 实例按插件缓存，关闭插件时统一销毁
+
+`wasm` 命名空间只对 hybrid 插件可用
+
+## 插件窗口与 UI
+
+### 事件流
+
+JS 侧调 `OronBox.ui.render(tree)` 或 `OronBox.ui.openPage(tree)` 后，宿主解析 UI 树并更新界面：
+
+- `ui.render` → 更新当前页面内容
+- `ui.openPage` → 压入新的独立页面
+- `ui.update(nodes)` 是 `ui.render` 的别名（兼容 legacy）
+
+控件交互（按钮点击、输入变化等）通过回调 id 送回宿主执行
+
+### 树结构
+
+节点格式为 `{type, props, children}`；props 中的函数值会被替换成回调 id 后传入宿主。宿主解析时校验：树必须是对象、节点必须有 `type`、每个节点的子节点数 ≤ 256（legacy 平铺列表总条数 ≤ 256）
+
+`Image` 节点特殊处理：`props.src`（插件存储内的路径）会被宿主替换为 `props.data`（base64 内容），图片 ≤ 4 MiB
+
+支持的节点类型：
+
+`Column` `Row` `LazyColumn` `Spacer` `Text` `HtmlDocument` `Button` `TextField` `Switch` `Checkbox` `Slider` `Dropdown` `Image` `Card` `Divider` `Badge` `CircularProgress` `LinearProgress` `Modal` `Tooltip` `Tabs` `TabContent`
+
+通用 props：
+
+| prop | 效果 |
+| --- | --- |
+| `visible` | `false` 时不渲染（默认可见） |
+| `disabled` | 拦截指针事件 |
+| `opacity` | 0–1 透明度 |
+| `padding` | 数值，四周内边距 |
+
+常用节点：
+
+- `Text`：`value`、`size`、`color`（或 `text-color`，支持 `#rgb` / `#rrggbb`）、`weight`（`bold` / `medium`）、`align`、`maxLines`
+- `Button`：`text`、`primary`（决定实心 / 填充样式）、`onClick`
+- `TextField`：`value`、`placeholder`、`multiline`、`onChange`（失焦时携带当前文本）
+- `Switch` / `Checkbox`：`checked`、`onChange`
+- `Slider`：`value`、`min`、`max`、`onChange`
+- `Dropdown`：`value`、`options`（字符串数组）、`onChange`
+- `Image`：`data`（base64）、`width`、`height`、`radius`、`fit`（`contain` / `fill` / `fitWidth` / `fitHeight` / `none` / `scaleDown`，默认 `cover`）
+- `Tabs`：`tabs`（`[{id, label}]`）、`onChange`（参数为选中 tab 的 id）、`scrollable`；`TabContent`：`tabId`、`activeId`
+- `Modal`：`title`、`onDismiss`
+- `Badge`：`count`（>99 显示 `99+`）
+- `HtmlDocument`：`value`（HTML 内容）
+
+未知类型渲染为空节点
+
+## 定时器
+
+`setTimeout` / `setInterval` / `clearTimeout` / `clearInterval` 在 JS 运行时中可用；定时器回调抛出的错误只记日志，不影响运行时
+
+WASM 插件没有注入 JS 引导，因此没有定时器接口
+
+## 生命周期与错误处理
+
+- 启动：首次打开插件、触发 UI 回调或宿主调用插件时才创建运行时；入口脚本可以定义可选的 `activate(plugin)` 启动函数，启动时会被调用
+- 关闭（卸载、清除数据、安全模式、宿主关闭）：取消所有定时器，销毁运行时与 WASM 实例，同步沙箱数据
+- 未捕获的 Promise 拒绝会上报日志；可识别的瞬时错误（如设备未就绪、传输断开、超时）只记日志
+- 不可恢复错误会记录插件失败状态，UI 层弹出错误对话框，提供「卸载 / 清除数据 / 启用安全模式」操作

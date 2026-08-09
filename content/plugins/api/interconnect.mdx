@@ -1,0 +1,64 @@
+---
+title: Interconnect 应用间通信
+description: 应用间通信：send / onMessage
+---
+
+
+应用间通信：按包名向目标应用（设备上的快应用等）发送文本消息，或接收来自应用的消息
+
+OronBox 只提供传输基础设施——仅支持发送文本消息，没有文件传输、分片或确认协议
+
+
+### send(packageName, data, deviceId?)
+
+向目标应用发送消息；`deviceId` 省略时发给当前活动设备
+
+```js
+await OronBox.interconnect.send('com.example.target', 'hello from plugin');
+```
+
+### onMessage(callback)
+
+开始监听来自应用的消息，返回停止函数
+
+```js
+const stop = await OronBox.interconnect.onMessage(({ packageName, data }) => {
+  console.info(`Received from ${packageName}: ${data}`);
+});
+
+// 停止监听
+await stop();
+```
+
+## 完整示例：消息器
+
+```js
+globalThis.activate = async (plugin) => {
+  let target = '';
+  let message = '';
+  let received = '';
+  const { Column, Text, TextField, Button } = OronBox.ui;
+
+  OronBox.interconnect.onMessage(({ packageName, data }) => {
+    received = `[${packageName}] ${data}`;
+    render();
+  });
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      TextField({ value: target, placeholder: 'Target package', onChange: v => { target = v; } }),
+      TextField({ value: message, placeholder: 'Message', onChange: v => { message = v; } }),
+      Button('Send', { onClick: () => OronBox.interconnect.send(target, message) }),
+      Text(received || 'Waiting...'),
+    ]),
+  );
+
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `interconnect` 权限（中风险）
+
+> 完整示例里的界面组件需要 `ui` 权限，示例的 manifest 需同时声明 `interconnect` 与 `ui`

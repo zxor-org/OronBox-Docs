@@ -1,0 +1,43 @@
+---
+title: Wasm 模块
+description: 在 hybrid 插件中加载并调用 WASM 模块
+---
+
+hybrid 插件可以通过 `OronBox.wasm` 从插件沙箱加载 `.wasm` 模块并调用其导出函数
+
+该命名空间只对 `runtime: "hybrid"` 的插件可用；`js` 与 legacy 插件调用会报错
+
+## load(path, options)
+
+从插件存储读取 `.wasm` 字节并实例化；`options.wasi` 不为 `false` 时挂上 WASI 沙箱。返回冻结的模块对象：
+
+```js
+const mod = await OronBox.wasm.load('/lib/codec.wasm');
+const id = mod.id; // "wasm_1"
+mod.call('exportName', arg1, arg2);          // 调用导出函数，返回导出值数组
+mod.readMemory(offset, length, 'memory');    // 读内存，返回 base64
+mod.writeMemory(offset, data, 'memory');     // 写内存，data 为 base64
+mod.dispose();                               // 销毁实例
+```
+
+- `id` 形如 `wasm_1`，递增分配
+- `call` 的返回是导出函数的返回值数组
+- `readMemory` / `writeMemory` 的 `memory` 参数默认 `'memory'`
+- 实例按插件缓存，关闭插件时统一销毁
+
+## 完整示例
+
+```js
+globalThis.activate = async (plugin) => {
+  const mod = await OronBox.wasm.load('/lib/codec.wasm');
+  const result = mod.call('decode', 0, 16);
+  console.info('decode result:', result);
+  mod.dispose();
+};
+```
+
+需要先把 `.wasm` 文件打进插件包（如 `/lib/codec.wasm`），运行时从沙箱内路径加载
+
+## 权限
+
+`wasm.*` 不要求权限声明，只要求 `hybrid` 运行时

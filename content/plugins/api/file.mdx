@@ -1,0 +1,132 @@
+---
+title: File 文件系统
+description: 沙箱文件系统：四个区域、读写与目录操作、系统文件选择与导出
+---
+
+
+插件有独立的沙箱文件系统，分四个区域：
+
+| 区域 | 前缀 | 权限 | 说明 |
+|------|------|--------|------|
+| 包内 | `/plugin` | 只读 | 打包在 `.obp` 中的文件 |
+| 数据 | `/data` | 读写 | 持久化存储 |
+| 缓存 | `/cache` | 读写 | 系统可能清除 |
+| 临时 | `/temp` | 读写 | 重启即清空 |
+
+二进制数据使用 Base64 编码
+
+## 读写
+
+### read(path, options)
+
+```js
+// 按 UTF-8 文本读取
+const text = await OronBox.file.read('/data/note.txt', { encoding: 'utf8' });
+
+// 按 Base64 二进制读取
+const base64 = await OronBox.file.read('/data/image.png', { encoding: 'base64' });
+
+// 读取一段切片
+const chunk = await OronBox.file.read('/data/large.bin', {
+  encoding: 'base64',
+  offset: 1024,
+  length: 512
+});
+```
+
+### write(path, data, options)
+
+```js
+// 写 UTF-8 文本
+await OronBox.file.write('/data/note.txt', 'Hello World', { encoding: 'utf8' });
+
+// 写 Base64 二进制
+await OronBox.file.write('/data/image.png', base64data, { encoding: 'base64' });
+
+// 追加
+await OronBox.file.write('/data/log.txt', 'new line\n', {
+  encoding: 'utf8', append: true
+});
+```
+
+## 目录操作
+
+```js
+// 列出 → [{name, path, size, isDirectory}, ...]
+const entries = await OronBox.file.list('/data');
+
+// 状态 → {name, path, size, isDirectory} 或 null
+const stat = await OronBox.file.stat('/data/note.txt');
+
+// 创建目录
+await OronBox.file.mkdir('/data/subdir');
+
+// 复制
+await OronBox.file.copy('/data/a.txt', '/data/b.txt');
+
+// 移动
+await OronBox.file.move('/temp/a.txt', '/data/a.txt');
+
+// 删除
+await OronBox.file.remove('/data/old.txt');
+```
+
+
+## 与系统文件交互
+
+### pick(options)
+
+打开系统文件选择器，把所选文件导入 `/temp/picker/...`
+
+```js
+const picked = await OronBox.file.pick({});
+if (!picked) return; // 用户取消
+// picked = { name: 'photo.png', path: '/temp/picker/.../photo.png', size: 102400 }
+```
+
+### unload(path, options)
+
+把沙箱文件导出到宿主环境（触发保存对话框）
+
+```js
+const result = await OronBox.file.unload('/data/report.pdf', {
+  suggestedName: 'Report.pdf'
+});
+// result = { exported: true, name: 'Report.pdf' }
+```
+
+## 完整示例：日志器
+
+```js
+globalThis.activate = async (plugin) => {
+  const LOG_PATH = '/data/log.txt';
+  let logs = '';
+  const { Column, Text, Button } = OronBox.ui;
+
+  const addLog = async () => {
+    const line = `[${new Date().toLocaleTimeString()}] Log entry\n`;
+    await OronBox.file.write(LOG_PATH, line, { encoding: 'utf8', append: true });
+    logs = await OronBox.file.read(LOG_PATH, { encoding: 'utf8' });
+  };
+
+  const clearLogs = async () => {
+    await OronBox.file.remove(LOG_PATH);
+    logs = '';
+  };
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      Text(logs || 'No logs yet'),
+      Button('Add log', { onClick: OronBox.ui.action(addLog, render) }),
+      Button('Clear', { onClick: OronBox.ui.action(clearLogs, render) }),
+    ]),
+  );
+
+  try { logs = await OronBox.file.read(LOG_PATH, { encoding: 'utf8' }); } catch (_) {}
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `file` 权限；基础读写为低风险，`pick` 与 `unload` 为中风险

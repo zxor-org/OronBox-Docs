@@ -1,0 +1,119 @@
+---
+title: Plugin Permissions
+description: OronBox plugin permission model — declared capabilities, authorization flow, four decisions, risk levels, persistence
+---
+
+Plugin permissions in OronBox work in two layers: **declaration** and **runtime authorization**. A plugin must list every capability it uses in the `permissions` array of its `manifest.json`; a package that declares anything outside the whitelist is rejected. At runtime, every call to a protected host API goes through a permission check, and an authorization prompt is shown only when a decision is required.
+
+## Capability whitelist
+
+`permissions` accepts exactly 8 capabilities. Any other value causes the package to be rejected (error: `Unsupported plugin permissions`). The whitelist check applies to non-legacy plugins only:
+
+| Capability | What it allows | Guarded operations |
+| --- | --- | --- |
+| `ui` | Render UI, open pages, dialogs and external links | `ui.render`, `ui.openPage`, `ui.openExternal`, `ui.dialog`, `ui.getRenderSize` (`ui.update` is the legacy alias) |
+| `file` | Read/write files inside the plugin sandbox (`/plugin` is read-only; `/data`, `/cache`, `/temp` are writable) | `file.read`, `file.write`, `file.list`, `file.stat`, `file.mkdir`, `file.copy`, `file.move`, `file.remove`, `file.pick`, `file.unload` |
+| `network` | Make HTTP/HTTPS requests or download into the sandbox | `network.fetch` (response capped at 16 MiB), `network.download` (streams to a file) |
+| `interconnect` | Send and receive messages with apps running on the device | `interconnect.send`, `interconnect.observe` |
+| `provider` | Register/unregister a resource provider, exposing the plugin as a community resource catalog source | `provider.register`, `provider.unregister` |
+| `device` | Read paired devices, connect/disconnect, install/launch/uninstall apps, switch watchfaces | `device.list`, `device.info`, `device.connect`, `device.disconnect`, `device.apps.list`, `device.apps.launch`, `device.apps.uninstall`, `device.install`, `watchface.list`, `watchface.set` |
+| `protocol` | Observe or send raw protocol frames | `protocol.observe`, `protocol.send`, `protocol.request` |
+| `appside` | Manage Zepp OS App-Side lifecycle, inject simulated messages, attach ZML hooks | `appside.list`, `appside.start`, `appside.stop`, `appside.send`, `appside.inject`, `appside.sessions`, `appside.events`, `appside.clearEvents`, `appside.zml.*` |
+
+Some host APIs require no permission and never trigger a check: `log.*` (logging), `storage.*` (key-value config), `os.*` (system information). `wasm.*` is only available to `hybrid` runtimes and also requires no permission declaration.
+
+### Legacy permission aliases
+
+For legacy plugins (no `runtime` field), old AstroBox capability names are accepted as aliases:
+
+| New capability | Legacy names |
+| --- | --- |
+| `file` | `filesystem` |
+| `protocol` | `debug` |
+| `device` | `device`, `thirdpartyapp`, `installer` |
+
+### Where declared permissions are shown
+
+- Before install/update: a confirmation dialog lists all declared permissions
+- Plugin detail page: permissions shown as chips
+- Market entry dialog: declared permissions listed the same way
+
+## Authorization flow
+
+Every protected host API call goes through a permission check:
+
+1. Capability check: calling an API without declaring the capability raises `permission_not_declared` — no prompt is shown
+2. Low-risk operations pass through without prompting
+3. Existing grants (session or always) pass through without prompting
+4. Otherwise an authorization prompt is shown and the user picks a decision
+5. Concurrent requests for the same grant point are merged into one prompt
+
+The request carries the plugin ID/name, capability, operation, risk level, description, target resource and scope.
+
+## The four decisions
+
+The prompt offers four choices:
+
+| Decision | Behavior |
+| --- | --- |
+| Allow once | Only the current call is allowed; nothing is recorded, so the same operation prompts again next time |
+| Allow this session | No more prompts while the plugin runtime stays alive (until the runtime is closed) |
+| Always allow | Written to persistent grants; no more prompts afterwards |
+| Deny | Raises `permission_denied`; the plugin receives a permission error |
+
+The dialog cannot be dismissed by tapping outside; closing it or returning an invalid decision counts as Deny.
+
+A "session" grant ends when the runtime is closed: closing the plugin, updating/uninstalling it, or enabling safe mode all close plugin runtimes.
+
+## Risk levels
+
+Every guarded operation has a risk level (`low` / `medium` / `high`). The level decides two things only: low-risk operations are allowed without prompting; medium- and high-risk operations require user authorization.
+
+| Risk | Operations |
+| --- | --- |
+| Low | `ui.render`, `ui.update`, `ui.openPage`, `ui.getRenderSize`; `file.read`, `file.write`, `file.list`, `file.stat`, `file.mkdir`, `file.copy`, `file.move`, `file.remove` |
+| Medium | `ui.dialog`, `ui.openExternal`; `file.pick`, `file.unload`; `network.fetch`, `network.download`; `interconnect.send`, `interconnect.observe`; `provider.register`, `provider.unregister`; `device.list`, `device.info`, `device.apps.list`, `watchface.list`; `protocol.observe`; `appside.list`, `appside.sessions`, `appside.events` |
+| High | `device.connect`, `device.disconnect`, `device.apps.launch`, `device.apps.uninstall`, `device.install`, `watchface.set`; `protocol.send`, `protocol.request`; `appside.start`, `appside.stop`, `appside.send`, `appside.inject`, `appside.clearEvents`, `appside.zml.attach`, `appside.zml.request`, `appside.zml.call`, `appside.zml.detach` |
+
+## Grant granularity
+
+Grants are keyed as `capability:operation:scope`. Network, external-link, interconnect, device, protocol and App-Side operations carry their target as the scope, so a grant is specific to one target:
+
+| Operation group | Example scope |
+| --- | --- |
+| `network.*`, `ui.openExternal` | Target hostname |
+| `interconnect.send` | Target package name |
+| `device.connect`, `device.disconnect` | Device address |
+| `device.info`, `device.apps.list`, `device.install`, `watchface.list`, `protocol.*` | Current device name |
+| `device.apps.launch`, `device.apps.uninstall` | App package name |
+| `watchface.set` | Watchface ID |
+| `appside.*` | App-Side app ID |
+
+Other operations (such as file reads/writes) are not scoped; their grant key is `capability:operation`.
+
+## Persistence
+
+- "Always allow" grants are persisted and survive plugin updates
+- "Session" grants live in memory only and are cleared when the plugin runtime closes
+- Updating a plugin (reinstalling a package with the same ID) keeps its config and "always allow" grants
+
+## Revoking grants
+
+There is currently no UI to revoke individual grants.
+
+These operations clear grants:
+
+- **Clear data**: wipes the plugin's session and persistent grants, and deletes its data and cache
+- **Uninstall**: clears grants and removes the plugin directory
+
+When a plugin fails at runtime, the error dialog offers three actions: Clear data, Uninstall, and Enable safe mode.
+
+## Safe mode
+
+Safe mode is a global switch. When enabled:
+
+- All running plugins are closed immediately
+- Plugins cannot start; calls fail with "Plugins are disabled in safe mode"
+- The switch state is persisted in app settings
+
+A banner at the top of the plugins page shows safe mode is on and offers a one-click exit; the plugin error dialog can also jump straight into safe mode.

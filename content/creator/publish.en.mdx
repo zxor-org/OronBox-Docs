@@ -1,0 +1,54 @@
+---
+title: Publishing a resource
+description: The full flow from creating to submitting, and how publishing to BandBBS / AstroBox works
+---
+
+## Creating a resource
+
+In the creator center tap "New resource" to open the wizard. Six steps:
+
+1. **Basic info**: resource slug, name, summary. Save a draft at any time.
+2. **Resource files**: add the packages (Vela quick apps or watchfaces). Multiple files are allowed; you can re-upload.
+3. **Device selection**: bind the devices this resource supports.
+4. **Device-file mapping**: confirm which package maps to each device section. The wizard warns if one BandBBS section has several packages, or if a device's BandBBS section can't be resolved.
+5. **Publish targets**: choose where to publish (see below).
+6. **Preview & submit**: review everything and submit.
+
+In the wizard you can also set:
+
+- **Icon & cover**: icon 1:1, cover 3:2. Optional on OronBox; **required on AstroBox**. Use PNG / JPEG / WebP.
+- **Content attributes**: original / derivative / port / template reskin / AI-assisted / AI-generated.
+- **Creators & source**: collaborators (invite BandBBS users), original author, source URL, license, authorization notes.
+- **Additional links**: external links (name + URL) for the resource.
+
+## Publish targets
+
+A resource can publish to several targets at once:
+
+| Target | Notes |
+| --- | --- |
+| OronBox | **Required** — resources go through OronBox review |
+| BandBBS | Needs BandBBS write authorization. Once OronBox review passes, the resource info is **published directly to the matching BandBBS section** |
+| AstroBox Repo | Needs GitHub. Once OronBox review passes, a fork repository is created and a **PR is submitted to the AstroBox repo**, reviewed independently by AstroBox maintainers |
+
+The submit confirmation shows "Submit to OronBox", "Sync to BandBBS: \{section\}" and "Sync to AstroBox: \{owner\}/\{repository\}".
+
+## After submitting
+
+- Once the OronBox review passes, the resource goes live; the BandBBS / AstroBox targets follow (AstroBox still waits for its maintainer's PR review).
+- From the workspace you can **update the resource** (existing packages and preview images are kept; no re-upload) and view the **revision history**.
+- Updates to resources already linked to BandBBS / AstroBox **sync to those platforms**.
+
+## Takedown and deletion
+
+- **Takedown**: the resource is hidden from the store and can be restored at any time.
+- **Delete**:
+  - Draft: permanently deleted, unrecoverable.
+  - Published OronBox resource: the **linked BandBBS resource is deleted too**, unrecoverable.
+  - Content already published on AstroBox is not affected by deletion; contact an AstroBox-Repo maintainer to take it down.
+
+## How it works
+
+In short: **OronBox is a single publishing entry for your resources across OronBox, BandBBS and AstroBox**. After OronBox review, content syncs automatically to the BandBBS section (a post) and AstroBox (a PR) — you don't operate the three platforms separately.
+
+See [Review & status](./review) for the review rules.

@@ -1,0 +1,101 @@
+---
+title: Command-line tool
+description: "The desktop --nogui CLI: devices, resources, accounts, queue and JSON output"
+---
+
+On desktop you can run OronBox from the command line with `--nogui`, useful for scripting. A background daemon owns Bluetooth connections and tasks; the CLI and the GUI share it, so you don't manage it yourself.
+
+> The CLI still requires a logged-in graphical desktop session on Linux; `--nogui` only hides the window and won't run in a headless SSH session.
+
+## Daemon
+
+```sh
+oronbox --nogui daemon start
+oronbox --nogui daemon status
+oronbox --nogui daemon stop
+```
+
+Other commands start the daemon automatically (unless you pass `--no-autostart`).
+
+## Devices and local installs
+
+```sh
+oronbox --nogui device paired
+oronbox --nogui device scan --timeout 10
+oronbox --nogui device connect AA:BB:CC:DD:EE:FF
+oronbox --nogui device info
+oronbox --nogui install quickapp ./demo.rpk
+oronbox --nogui install watchface ./face.mwz --device AA:BB:CC:DD:EE:FF
+```
+
+Use `--detach` to queue the install and return a task ID immediately; combine with `--wait` to wait for the task and exit with the matching code.
+
+## Online resources
+
+```sh
+oronbox --nogui resource sources
+oronbox --nogui resource devices --source bandbbs
+oronbox --nogui resource search keyword --source bandbbs --filter watchface,free,bandbbs-category:101 --sort time
+oronbox --nogui resource list --source astrobox-repo --filter quickapp,hide-paid,hide-force-paid,o65m
+oronbox --nogui resource info bandbbs:6751
+oronbox --nogui resource download bandbbs:6751
+oronbox --nogui resource install bandbbs:6751
+```
+
+`--filter` takes comma-separated conditions:
+
+- `quickapp`, `watchface`, `firmware` or `miniprogram`: resource type, one at a time
+- `free`: free resources only
+- `hide-paid`: hide paid resources
+- `hide-force-paid`: hide force-paid resources (mainly AstroBox Repo)
+- anything else: a device or section ID — multiple allowed (list them with `resource devices --source SOURCE`)
+
+`--sort random|name|time` sets the order; `--page N` and `--page-size N` control paging.
+
+## Device content, accounts and settings
+
+```sh
+oronbox --nogui app list
+oronbox --nogui app launch com.example.app
+oronbox --nogui app uninstall com.example.app
+oronbox --nogui watchface list
+oronbox --nogui watchface set FACE_ID
+oronbox --nogui watchface remove FACE_ID
+oronbox --nogui account list
+oronbox --nogui account login amazfit --username user@example.com
+oronbox --nogui account logout bandbbs
+oronbox --nogui settings list
+oronbox --nogui settings set auto_reconnect true
+```
+
+For non-interactive sign-in use `--password-stdin`; don't pass passwords as command-line arguments.
+
+## Queue, logs and machine-readable output
+
+```sh
+oronbox --nogui queue list
+oronbox --nogui queue get TASK_ID
+oronbox --nogui queue wait TASK_ID
+oronbox --nogui queue watch
+oronbox --nogui queue cancel TASK_ID
+oronbox --nogui queue remove TASK_ID
+oronbox --nogui queue retry TASK_ID
+oronbox --nogui queue start
+oronbox --nogui queue pause
+oronbox --nogui logs watch
+oronbox --nogui --json device status
+```
+
+With `--json`, command results print as JSON and progress/events as JSONL. Exit codes:
+
+| Code | Meaning |
+| ---: | --- |
+| 0 | Success |
+| 2 | Invalid usage or arguments |
+| 3 | File error |
+| 4 | No suitable device |
+| 5 | Connection failed |
+| 6 | Resource validation failed |
+| 7 | Install failed |
+| 8 | Daemon error |
+| 70 | Internal error |

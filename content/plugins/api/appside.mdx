@@ -1,0 +1,223 @@
+---
+title: AppSide 伴生服务
+description: ZeppOS 伴生服务：ZML 运行时与调试
+---
+
+
+管理 ZeppOS 设备的伴生服务（AppSide）
+
+伴生服务是运行在手表小程序旁边的远程 JS 执行通道，通过 `messaging.peerSocket` 与小程序实时通信
+
+`appId` 是 32 位无符号整数（Zepp OS 应用 ID）
+
+
+## ZML
+
+> 用法参考：[ZML](https://zepp-health.github.io/zml/zh/getting-started)
+
+OronBox 内置了自包含的 ZML AppSide 通信运行时，插件**不需要**自行打包 `@zeppos/zml`；用 `attach()` 把运行时绑定到小程序，即可在插件钩子里使用官方 `BaseSideService` 风格的 `this.request()`、`this.call()`、`onRequest`、`onCall` API
+
+插件的 `manifest.json` 必须声明 `appside` 权限：
+
+```json
+{
+  "permissions": ["appside"]
+}
+```
+
+### attach(options)
+
+为 `appId` 创建或获取 ZML 上下文
+
+`onInit`、`onRun`、`onDestroy`、`onRequest`、`onCall` 钩子都是可选的；在每个钩子内部，`this` 就是 `attach()` 返回的同一个 ZML 上下文
+
+```js
+globalThis.activate = async () => {
+  const zml = await OronBox.appside.attach({
+    appId: 0x0010ee3b,
+
+    onInit() {
+      console.log('ZML App-side initialized');
+    },
+
+    async onRun() {
+      const result = await this.request({
+        method: 'device.getData',
+        params: { type: 'summary' },
+      });
+      console.log('Watch response:', JSON.stringify(result));
+    },
+
+    onRequest(req, res) {
+      if (req.method === 'plugin.getState') {
+        res(null, { ready: true });
+        return;
+      }
+      res({
+        code: 'METHOD_NOT_FOUND',
+        message: `Unknown method: ${req.method}`,
+      });
+    },
+
+    onCall(message) {
+      console.log('Watch notification:', JSON.stringify(message));
+    },
+
+    onDestroy() {
+      console.log('ZML App-side stopped');
+    },
+  });
+
+  const result = await zml.request({
+    method: 'device.getInfo',
+    params: {},
+  });
+
+  await zml.call({
+    method: 'plugin.ready',
+    params: { success: true },
+  });
+};
+```
+
+### request(message, options?)
+
+发送一个期待响应的 ZML 请求并返回 Promise
+
+默认超时遵循内置 ZML 运行时的配置
+
+```js
+const result = await zml.request({
+  method: 'weather.get',
+  params: { city: 'Shanghai' },
+});
+```
+
+### call(message)
+
+发送单向通知，不等待响应
+
+```js
+await zml.call({
+  method: 'settings.changed',
+  params: { theme: 'dark' },
+});
+```
+
+### detach()
+
+移除本插件的钩子并释放 ZML 上下文
+
+插件关闭时 OronBox 也会自动清理
+
+```js
+await zml.detach();
+```
+
+每个 `appId` 只创建一个伴生服务会话，钩子不能另开蓝牙连接
+
+`request()` / `call()` 只能在手表已连接、设备就绪且小程序已打开伴生服务后发送数据
+
+
+## 方法
+
+### list()
+
+```js
+const ids = await OronBox.appside.list();
+// [0x0010ee3b, 0x00001234, ...]
+```
+
+### start(appId)
+
+启动本地 AppSide 脚本运行时（需要有缓存的脚本）
+
+```js
+await OronBox.appside.start(0x0010ee3b);
+```
+
+### stop(appId)
+
+```js
+await OronBox.appside.stop(0x0010ee3b);
+```
+
+### send(appId, hexData)
+
+向手表发送十六进制编码的二进制数据（需要活动的手表会话）
+
+```js
+await OronBox.appside.send(0x0010ee3b, '0100ff');
+```
+
+### inject(appId, hexData)
+
+模拟一条手表发往宿主机的消息，注入本地运行时（调试用——不需要手表会话）
+
+```js
+await OronBox.appside.inject(0x0010ee3b, '48656c6c6f');
+// "Hello" 的十六进制 → 运行时的 peerSocket.onmessage 会收到它
+```
+
+### sessions()
+
+列出所有活动会话
+
+```js
+const sessions = await OronBox.appside.sessions();
+// [{ appId: 0x0010ee3b, watchSessionOpen: true }, ...]
+```
+
+### events(appId)
+
+读取某个 appId 的调试事件日志
+
+```js
+const events = await OronBox.appside.events(0x0010ee3b);
+// [{ timestamp: '…', type: 'start', message: 'Script loaded' }, ...]
+```
+
+### clearEvents(appId)
+
+```js
+await OronBox.appside.clearEvents(0x0010ee3b);
+```
+
+## 完整示例：AppSide 管理器
+
+```js
+globalThis.activate = async (plugin) => {
+  let ids = [];
+  let result = '';
+  const { Column, Text, Button } = OronBox.ui;
+
+  const render = () => {
+    const nodes = [
+      Button('Refresh', {
+        onClick: OronBox.ui.action(async () => {
+          ids = await OronBox.appside.list();
+          result = `${ids.length} scripts cached: ${ids.map(i => '0x'+i.toString(16)).join(', ')}`;
+        }, render),
+      }),
+      Text(result),
+    ];
+
+    for (const id of ids) {
+      const hex = '0x' + id.toString(16);
+      nodes.push(Button(`Start ${hex}`, {
+        onClick: OronBox.ui.action(async () => {
+          try { await OronBox.appside.start(id); result = `${hex} started`; }
+          catch (e) { result = `Error: ${e.message}`; }
+        }, render),
+      }));
+    }
+    return OronBox.ui.render(Column({ gap: 8 }, nodes));
+  };
+
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `appside` 权限；只读操作（`list`、`sessions`、`events`）是中风险，控制操作（`start`、`stop`、`send`、`inject`、`clearEvents`）是高风险

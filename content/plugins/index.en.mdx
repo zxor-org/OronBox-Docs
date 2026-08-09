@@ -1,0 +1,125 @@
+---
+title: Plugin Development
+description: Build, package, and distribute OronBox plugins
+---
+
+OronBox plugins are extension programs that run in an isolated sandbox and can call device, file system, network, and inter-app communication interfaces. Plugins are distributed as `.obp` files — ZIP archives with a root `manifest.json`.
+
+> Plugins are third-party code; check the source before installing. Plugins run inside a QuickJS / WASM sandbox, but they still hold the permissions you grant them.
+
+## Quick start
+
+A minimal JS plugin consists of two files.
+
+`manifest.json`:
+
+```json
+{
+  "api_level": 1,
+  "id": "dev.example.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "author": "you",
+  "runtime": "js",
+  "entry": "main.js",
+  "permissions": []
+}
+```
+
+`main.js`:
+
+```js
+// OronBox calls activate automatically after loading the plugin
+globalThis.activate = async (plugin) => {
+  let count = 0;
+
+  const { Column, Text, Button } = OronBox.ui;
+  const render = () => OronBox.ui.render(
+    Column({ gap: 12, padding: 16 }, [
+      Text(`Count: ${count}`),
+      Button('+1', {
+        onClick: OronBox.ui.action(() => count++, render),
+      }),
+    ]),
+  );
+
+  await render();
+};
+```
+
+The entry point is the global function `activate(plugin)`, where `plugin` is `{id, name, version, runtimeVersion}`. Build the UI with `OronBox.ui.render()`; component events take functions directly, async state changes use `OronBox.ui.action(fn, render)`, and `render()` returns the Promise from `OronBox.ui.render()`. See [OronBox.ui](/en/plugins/api/ui) for the full component reference.
+
+Package it as `.obp`:
+
+```bash
+zip hello.obp manifest.json main.js icon.png
+```
+
+Open the plugin page in OronBox, tap "Import plugin", and select `hello.obp`. Once installed, open the plugin — you'll see the counter rendered as UI, not console output.
+
+## Package format
+
+An `.obp` file is a ZIP archive whose root must contain `manifest.json`. The entry file and icon are referenced from the manifest; other files can live in any subdirectory and are accessed through the file API at runtime.
+
+Parsing enforces these limits:
+
+| Limit | Value |
+| --- | --- |
+| Archive size | ≤ 32 MiB |
+| Single entry size | ≤ 8 MiB |
+| Expanded total size | ≤ 64 MiB |
+| Entry count | ≤ 4096 |
+| Path safety | no `..`, absolute paths, colons, or NUL; `/` separators only |
+
+### Manifest fields
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `api_level` | yes | Must be `1`; missing (treated as `0`) or any other value is rejected |
+| `id` | yes (except legacy) | e.g. `dev.example.hello`; starts with a lowercase letter and needs at least one `.` or `-` separator, later segments may contain hyphens |
+| `name` | yes | Plugin name |
+| `version` | yes | Version string |
+| `runtime` | no | `js` / `wasm` / `hybrid`; omitted means legacy, unknown values are rejected |
+| `entry` | no | Entry file, defaults to `main.js` |
+| `permissions` | no | Permission list; only the 8 capabilities below |
+| `icon` | no | Icon path |
+| `author` / `description` / `website` | no | Metadata |
+
+Entry validation:
+
+- `runtime: "wasm"` requires `entry` to be a `.wasm` file with a valid WASM header
+- `runtime: "js"` / `"hybrid"` requires `entry` to be `.js` / `.mjs` / `.cjs`
+- Legacy plugins have no `id`; one is derived from `name` at install time
+
+## Runtimes
+
+| Type | Description |
+| --- | --- |
+| `js` | Recommended. JavaScript executed in a QuickJS sandbox |
+| `wasm` | WebAssembly plugins calling host capabilities through a WASI sandbox |
+| `hybrid` | JS entry that also loads a WASM module |
+| `legacy` | Old-format compatibility mode (no `runtime` field) |
+
+Plugins run in a separate window; console output and errors are shown there.
+
+## Permissions
+
+The `permissions` array accepts only 8 capabilities: `ui`, `file`, `network`, `interconnect`, `provider`, `device`, `protocol`, `appside`.
+
+When a plugin first performs a protected operation, OronBox shows an authorization prompt with four choices:
+
+| Choice | Meaning |
+| --- | --- |
+| Allow once | Applies to this call only |
+| Allow for this session | Applies for the rest of this run |
+| Always allow | Remembered, no further prompts |
+| Deny | The operation is refused and the plugin gets a permission error |
+
+High-risk operations (such as device writes or network transfers) show a risk level in the prompt.
+
+## Import and distribution
+
+- Manual import: plugin page → Import → select `.obp` / `.abp` / `.zip`
+- Plugin sources: the official OronBox plugin catalog, the community catalog, and the AstroBox store
+
+`.abp` is the legacy AstroBox format, imported in compatibility mode.

@@ -1,0 +1,137 @@
+---
+title: 插件开发
+description: 开发、打包并分发 OronBox 插件
+---
+
+OronBox 插件是在独立沙箱中运行的扩展程序，可以调用设备、文件系统、网络和应用间通信等接口
+
+插件以 `.obp` 文件分发——本质是 ZIP 压缩包，根目录包含 `manifest.json`
+
+> 插件是第三方代码，安装前请核对来源
+>
+> 插件运行在 QuickJS / WASM 沙箱中，但它仍拥有你授予的权限
+
+## 开始
+
+一个最小的 JS 插件包含两个文件
+
+`manifest.json`：
+
+```json
+{
+  "api_level": 1,
+  "id": "dev.example.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "author": "you",
+  "runtime": "js",
+  "entry": "main.js",
+  "permissions": []
+}
+```
+
+`main.js`：
+
+```js
+// 插件加载后 OronBox 会自动调用 activate
+globalThis.activate = async (plugin) => {
+  let count = 0;
+
+  const { Column, Text, Button } = OronBox.ui;
+  const render = () => OronBox.ui.render(
+    Column({ gap: 12, padding: 16 }, [
+      Text(`Count: ${count}`),
+      Button('+1', {
+        onClick: OronBox.ui.action(() => count++, render),
+      }),
+    ]),
+  );
+
+  await render();
+};
+```
+
+入口是全局函数 `activate(plugin)`，`plugin` 为 `{id, name, version, runtimeVersion}`
+
+界面用 `OronBox.ui.render()` 渲染组件树；组件事件直接传函数，异步状态变更用 `OronBox.ui.action(fn, render)`，`render()` 返回 `OronBox.ui.render()` 的 Promise
+
+UI 组件完整参考见[OronBox.ui](/plugins/api/ui)
+
+打包为 `.obp`：
+
+```bash
+zip hello.obp manifest.json main.js icon.png
+```
+
+在插件页点击「导入插件」，选择 `hello.obp` 即可安装
+
+安装后打开插件，你会看到界面上的计数按钮——插件的界面就是这些组件树，而不是终端输出
+
+## 包格式
+
+`.obp` 是 ZIP 压缩包，根目录必须包含 `manifest.json`
+
+入口文件和图标按 manifest 声明引用，其余文件可按需组织在任意子目录，运行时通过文件 API 访问
+
+解析时强制校验：
+
+| 限制 | 值 |
+| --- | --- |
+| 压缩包大小 | ≤ 32 MiB |
+| 单个文件大小 | ≤ 8 MiB |
+| 展开后总大小 | ≤ 64 MiB |
+| 文件数量 | ≤ 4096 |
+| 路径安全 | 禁止 `..`、绝对路径、冒号与 NUL，统一使用 `/` 分隔 |
+
+### manifest 字段
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `api_level` | 是 | 目前必须为 `1`；缺失（按 0 处理）或其它值直接拒绝 |
+| `id` | 是（legacy 除外） | 如 `dev.example.hello`，小写字母开头，至少一个 `.` 或 `-` 分隔符，后续段可含连字符 |
+| `name` | 是 | 插件名称 |
+| `version` | 是 | 版本号 |
+| `runtime` | 否 | `js` / `wasm` / `hybrid`；缺省视为 legacy，不存在的值会被拒绝 |
+| `entry` | 否 | 入口文件，默认 `main.js` |
+| `permissions` | 否 | 权限列表，仅允许下方 8 项 |
+| `icon` | 否 | 图标路径 |
+| `author` / `description` / `website` | 否 | 元信息 |
+
+入口文件校验：
+
+- `runtime: "wasm"` 时，`entry` 必须是 `.wasm` 文件且带合法的 WASM 头
+- `runtime: "js"` / `"hybrid"` 时，`entry` 必须是 `.js` / `.mjs` / `.cjs` 文件
+- legacy 插件没有 `id`，安装时由 `name` 生成固定 ID
+
+## 运行时
+
+| 类型 | 说明 |
+| --- | --- |
+| `js` | 推荐；QuickJS 沙箱执行 JavaScript |
+| `wasm` | WebAssembly 插件，经 WASI 沙箱调用宿主能力 |
+| `hybrid` | JS 入口 + 同时加载 WASM 模块 |
+| legacy | 不写 `runtime` 字段的旧版兼容格式 |
+
+插件在独立窗口中运行，控制台输出和错误会在窗口内显示
+
+## 权限
+
+manifest 的 `permissions` 只接受 8 个能力：`ui`、`file`、`network`、`interconnect`、`provider`、`device`、`protocol`、`appside`
+
+插件首次执行某项受保护操作时，OronBox 会弹出授权请求，四种决策：
+
+| 决策 | 含义 |
+| --- | --- |
+| 允许本次 | 仅本次调用生效 |
+| 本次运行中 | 本次运行期间均允许 |
+| 始终允许 | 记住授权，之后不再询问 |
+| 拒绝 | 拒绝该操作，插件收到权限错误 |
+
+高风险操作（如设备写入、网络传输）的授权提示会标注风险等级
+
+## 导入与分发
+
+- 手动导入：插件页 → 导入 → 选择 `.obp` / `.abp` / `.zip`
+- 插件源：OronBox 官方插件目录、社区插件目录、AstroBox 商店
+
+`.abp` 是 AstroBox 旧版格式，OronBox 以 legacy 兼容方式导入

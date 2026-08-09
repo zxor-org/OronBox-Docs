@@ -1,0 +1,59 @@
+---
+title: Connecting a device
+description: Supported devices, how to scan and pair, and what the authkey is
+---
+
+## Supported devices
+
+OronBox identifies devices by their Bluetooth name:
+
+**Xiaomi / Redmi (VelaOS)**: Mi Band 8 Pro, 9, 9 Pro, 10, 10 Pro; Xiaomi Watch S1 Pro, S3, S4, S5; Redmi Watch 4, 5, 5 eSIM, 6.
+
+**ZeppOS**: Amazfit Active, Balance, Band 7, Bip 5/6, Cheetah, GTR 3/4, GTS 3/4, T-Rex 2/3/Ultra, Helio Ring and more. Note that **Mi Band 7 (Xiaomi Smart Band 7) is a ZeppOS device** and connects the ZeppOS way.
+
+If the Bluetooth name doesn't match any known device, it shows "Unrecognized device" — you can still try to connect manually.
+
+## Connection methods
+
+- **Xiaomi / Redmi**: classic Bluetooth (SPP). Turn on "Connect to a new phone" on the device first (usually in the band/watch Bluetooth settings).
+- **ZeppOS**: Bluetooth Low Energy (BLE). No system Bluetooth pairing needed.
+- **Web**: Xiaomi-family devices connect over Web Serial (browser serial API); ZeppOS devices over Web Bluetooth.
+
+## First connection (step by step)
+
+1. Open the **Devices** tab and tap **Scan and add**.
+2. Wait for the scan results (it auto-stops after 15 seconds; scan again if nothing shows up).
+3. Tap your device in the **Discovered devices** list.
+4. Enter the device's **authkey** and connect.
+5. The connection progresses through: preparing → establishing connection → initializing the device protocol → authenticating the device → reading device info.
+6. Once connected, the device is saved to **Paired devices**, and you can connect to it with a single tap afterwards.
+
+> If the device was connected by the official client or another tool before, disconnect it there first — a Bluetooth device is usually only reachable by one connection at a time.
+
+## The authkey
+
+The authkey authenticates the device; both device families need it when connecting.
+
+- **Xiaomi devices**: after signing into your Xiaomi account, bound devices' authkeys can be synced automatically (Settings → Accounts → Xiaomi → "Sign in and sync"). You can also type it manually.
+- **ZeppOS devices**: the authkey is a 32-character hexadecimal string; leave it empty if the device still uses the default key.
+
+The authkey is stored locally (in the current browser on the web), unencrypted. Don't enter it on shared machines.
+
+## Web Serial (connecting Xiaomi devices from the browser)
+
+1. On the Devices page, open "Connect via Web Serial".
+2. Enter the authkey and pick the device's serial port in the browser dialog.
+3. Saved devices and authkeys stay in the current browser; switching browsers or clearing site data means reconnecting.
+
+## Auto-reconnect
+
+Settings → Connection & downloads → Auto-reconnect reconnects the last paired device on startup (off by default; not supported on the web).
+
+## When connecting fails
+
+- "Bluetooth is unavailable. Please check that Bluetooth is enabled and the system permission allows OronBox to use it." — Bluetooth is off or not permitted. On macOS, allow the permission prompt on first launch.
+- "Connection failed. Please make sure Bluetooth permission is granted and Bluetooth is on, the device is nearby and not in use by another tool or device, and the device-side 'Connect to a new phone' mode is enabled." — the device wasn't found or is busy; check each item above.
+- "Bluetooth connection lost, please reconnect the device." — the connection dropped; reconnect.
+- "No usable transport endpoint found. Complete system Bluetooth pairing first, then rescan." — pair the device in the system Bluetooth settings first, then rescan.
+
+More prompts are covered in the [FAQ](./faq).

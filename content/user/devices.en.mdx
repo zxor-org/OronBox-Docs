@@ -1,0 +1,39 @@
+---
+title: Device management
+description: "What you can do with a connected device: apps, watchfaces, music, recordings and ZeppOS extras"
+---
+
+Once connected, the **Devices** tab shows the current device with battery and charge status. With several devices paired, use **Switch device** to move between them.
+
+## Basic features
+
+| Feature | What it does |
+| --- | --- |
+| Install app | Install a third-party app from a local file |
+| Install watchface | Install a watchface from a local file |
+| Firmware update | Check for updates or install local firmware — see [Firmware](./firmware) |
+| Manage apps | List installed apps and uninstall them; can show system apps |
+| Manage watchfaces | List, delete and set the current watchface |
+| Device info | Name, address, model, codename, IMEI, firmware version, serial, battery and storage |
+| Share QR code | Share a pairing QR code, switchable between "OronBox code" and "AstroBox-compatible code" |
+
+## ZeppOS extras
+
+ZeppOS devices (Amazfit, Mi Band 7 and others) get more tools under **More features**:
+
+- **Voice lab**: capture, monitor and reply to the watch's voice-assistant sessions (e.g. Xiao Ai). Supports continuous capture, sending replies back to the watch, and exporting recordings as Opus or WAV.
+- **Screen mirror**: view the watch screen live on the current device; adjustable frame interval (10–250).
+- **Offline maps**: send a ZIP map package or a Garmin IMG file to the watch. Packages up to 2 MB can go over BLE; for larger ones switch to classic Bluetooth. Confirm the install on the watch when prompted.
+- **App settings**: view and manage cached ZeppOS app settings data; add or replace companion (app-side) / setting compatibility files.
+- **App debug**: run cached companion (app-side) scripts in a local script runtime, compose and inject messages with the message editor, and inspect debug events.
+- **Find device**: make the watch vibrate or ring continuously so you can locate it.
+- **Music sync**: transfer MP3 files to the device. Vela devices accept files up to 100 MB; ZeppOS up to 50 MB (classic Bluetooth is faster). Manage songs and playlists on the device.
+- **Recordings sync** (Xiaomi devices): pull recordings from the watch and export them.
+
+## Installing local resources
+
+"Install app / Install watchface / Firmware update" all accept local files. After picking a file, OronBox **analyzes the file content** and shows a confirmation (with warnings and a 3-second countdown when the type or platform doesn't match). See "Installing local files" in [Explore](./resources).
+
+## Device logs
+
+Settings → Run logs → Pull device logs fetches logs from the connected Xiaomi device. It can take a while; keep the app in the foreground and the device screen on during the process.

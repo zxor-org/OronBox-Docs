@@ -1,0 +1,59 @@
+---
+title: Provider 资源源注册
+description: 把插件注册为资源源，向资源库提供可下载资源
+---
+
+
+插件可以把自己注册为资源源，向 OronBox 资源库提供可下载资源
+
+适用场景：社区仓库、私有目录等
+
+
+### register(definition)
+
+```js
+await OronBox.provider.register({
+  id: 'org.example.source',     // 唯一的反向域名 ID
+  name: 'Example Source',       // 显示名称
+  categories: async () => [     // 可选的分区列表
+    { id: 'watch', name: 'Watchfaces' },
+    { id: 'app', name: 'Apps' }
+  ],
+  query: async (query) => {     // 搜索 / 列表
+    // query = { keyword: '', category: 'watch', page: 1,
+    //           order: 'last_update', direction: 'desc' }
+    return {
+      items: [{
+        id: 'res-001', name: 'Classic Watchface',
+        type: 'watchface', author: 'Author',
+        version: '1.0', paidType: 'free'
+      }],
+      hasMore: false, total: 1
+    };
+  },
+  detail: async ({ id }) => ({ // 资源详情
+    id, name: 'Classic Watchface',
+    type: 'watchface',         // quickApp | watchface | firmware | fontpack | iconpack
+    version: '1.0', paidType: 'free',
+    authors: ['Author'],
+    description: '...',
+    supportedDevices: [{ name: 'Xiaomi Smart Band 9 Pro', codename: 'n67', platform: 'vela' }],
+    files: [{ id: 'f1', name: 'file.bin', size: 102400, fileName: 'file.bin' }],
+    content: { format: 'plainText', value: 'Details...' }
+  }),
+  download: async ({ id, fileId, targetDevice }) => ({
+    path: '/cache/file.bin',   // 必须是本插件沙箱内的路径
+    fileName: 'file.bin'
+  })
+});
+```
+
+### unregister(id)
+
+```js
+await OronBox.provider.unregister('org.example.source');
+```
+
+## 权限
+
+在 manifest 中声明 `provider` 权限（中风险）

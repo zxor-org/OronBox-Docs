@@ -1,0 +1,77 @@
+---
+title: Plugin Distribution
+description: Where OronBox plugins come from, how to import them, package formats, legacy compatibility, and updates
+---
+
+Plugins can be installed from the official repository, community plugin catalogs, the AstroBox v1 store, or by importing a local `.obp` / `.abp` / `.zip` file.
+
+Every install follows the same flow: the package and manifest are parsed and written into plugin storage.
+
+## Plugin sources
+
+| Source | ID | Notes |
+| --- | --- | --- |
+| OronBox official repository | `oronbox` | Catalog and downloads served by OronBox-Server; supports publishing and takedown |
+| Community plugin catalog | resource source | Plugins that register a resource source act as a community catalog data source |
+| AstroBox v1 store | `abv1` | Read-only, unmaintained catalog; browsing and install only, no update checks |
+| Manual import | — | Install a local `.obp` / `.abp` / `.zip` file |
+
+The "Market" tab of the plugins page lets you switch between plugin sources (currently `oronbox` and `abv1` are built in).
+
+### OronBox official repository
+
+- The catalog lists plugin metadata, download address, uploader info, icon and moderation state; entries show their moderation state and reason
+- Signed-in uploaders can see their own entries and update or take them down from the UI; uploading and takedown require a BandBBS sign-in, and submissions go through review
+
+### Community plugin catalog
+
+A plugin can register a resource source that provides catalog queries, details, downloads and device categories to the resource library.
+
+The community resources page treats such a source as a community source, offering paginated queries, detail views, downloads and device filtering.
+
+### AstroBox v1 store
+
+- The catalog comes from the GitHub repository `AstralSightStudios/AstroBox-Plugin-Repo` (unmaintained) and is read-only
+- The source never does **version update detection**; downloads re-archive the manifest, entry file and icon into an installable package
+
+## Importing
+
+- Click "Import" on the plugins page; the file picker restricts to `.obp`, `.abp`, `.zip`
+- The package is parsed locally and a confirmation dialog is shown with the plugin name and the declared permission list; legacy plugins additionally show a legacy compatibility warning
+- Confirming runs the install
+
+Publishing to the OronBox repository requires a BandBBS sign-in: pick a `.obp` / `.zip`; the package must not be legacy (legacy plugins cannot be published); an ID already published by someone else is rejected; after confirmation the package is submitted and the UI notes it is under review.
+
+## Package formats and extensions
+
+`.obp` is a ZIP archive whose root must contain `manifest.json`
+
+The parser detects packages by content, not by file extension; `.abp` and `.zip` are just extension conventions:
+
+| Extension | Convention |
+| --- | --- |
+| `.obp` | OronBox plugin package; manifest has `runtime` and `id` |
+| `.abp` | AstroBox legacy format, i.e. a plugin without a `runtime` field |
+| `.zip` | Generic archive extension, accepted for both import and publish |
+
+Package parsing and manifest validation limits are described in [Plugin Development](/en/plugins).
+
+## Legacy compatibility
+
+- A legacy plugin is one whose manifest **has no `runtime` field** (`runtime` supports `js` / `wasm` / `hybrid`)
+- Legacy plugins have no `id`; a stable ID is derived at install time from `name`: slugified lowercase name plus `-` and the first 12 hex characters of `sha256(name)` (e.g. `my-plugin-abcdef123456`)
+- At runtime, a built-in adapter translates the AstroBox v1 global API into the OronBox host API: `AstroBox.network.fetch` → `network.fetch`, `AstroBox.filesystem.*` → `file.*`, `AstroBox.thirdpartyapp.*` → `device.apps.*`, `AstroBox.debug.sendRaw` → `protocol.send`, `AstroBox.ui.updatePluginSettingsUI` → `ui.update`, and so on (exception: `filesystem.unloadFile` maps to `file.remove`, not `file.unload`)
+- Permissions are matched through legacy aliases (see [Plugin Permissions](/en/plugins/guides/permissions))
+- Some AstroBox v1 APIs are unavailable in OronBox and fail with an error: `modifyDeviceState`, `provider.registerCommunityProvider`
+- The install confirmation dialog shows a legacy compatibility warning
+
+## Updates
+
+- **Market update detection**: applies to non-legacy catalog entries only. When the installed version is older than the catalog version, the entry shows an "Update" button; otherwise it shows "Up to date". The AstroBox v1 source is legacy and never gets update detection
+- **Reinstalling the same ID is an update**: installing a package with the same ID as an installed plugin closes the old runtime, replaces the package contents, and keeps the existing config and "always allow" grants
+- **Publisher updates**: for an `owned` entry in the official repository, uploading a new package with the same ID updates it, and the new version goes through review again
+
+## Uninstall and data clearing
+
+- Uninstall: closes the runtime, clears grants, removes the plugin directory (including config)
+- Clear data: closes the runtime, clears grants, deletes data and cache, and resets config to empty

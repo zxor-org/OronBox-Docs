@@ -1,0 +1,111 @@
+---
+title: Device 设备
+description: 设备管理：列出、连接、应用管理与安装资源
+---
+
+
+管理已配对设备：列出、连接、断开、应用管理、安装资源
+
+除 `connect` 外，各方法接受可选的 `deviceId` 参数，省略时作用于当前活动设备；`connect` 需要指定要连接的设备
+
+
+### list()
+
+```js
+const devices = await OronBox.device.list();
+// [{ id: 'D4:17:61:...', name: 'Xiaomi Smart Band 9 Pro',
+//    connectType: 'spp', connected: true, current: true }, ...]
+```
+
+### info(deviceId?)
+
+```js
+const info = await OronBox.device.info();
+// { id: 'D4:...', name: '...', model: 'M2401B1',
+//   firmwareVersion: '3.1.175', battery: 85 }
+```
+
+### connect(deviceId)
+
+```js
+await OronBox.device.connect('D4:17:61:14:18:6E');
+```
+
+### disconnect()
+
+```js
+await OronBox.device.disconnect();
+```
+
+### apps.list(deviceId?)
+
+```js
+const apps = await OronBox.device.apps.list();
+// [{ packageName: 'com.example.app', name: 'Example',
+//    versionCode: 1, canRemove: true }, ...]
+```
+
+### apps.launch(packageName, options)
+
+```js
+await OronBox.device.apps.launch('com.example.app', { page: '' });
+```
+
+### apps.uninstall(packageName)
+
+```js
+await OronBox.device.apps.uninstall('com.example.app');
+```
+
+
+## 安装资源
+
+### install(path, options)
+
+```js
+// 安装快应用
+await OronBox.device.install('/data/app.bin', {
+  type: 'app', fileName: 'app.bin'
+});
+
+// 安装表盘
+await OronBox.device.install('/data/watchface.bin', {
+  type: 'watchface', fileName: 'watchface.bin'
+});
+
+// 安装固件
+await OronBox.device.install('/data/firmware.fw', {
+  type: 'firmware', fileName: 'firmware.fw'
+});
+```
+
+`type` 取值：`app` | `watchface` | `firmware`
+
+## 完整示例：设备信息面板
+
+```js
+globalThis.activate = async (plugin) => {
+  let info = 'Tap a button';
+  const { Column, Text, Button } = OronBox.ui;
+
+  const listDevices = async () => {
+    const devices = await OronBox.device.list();
+    info = devices.map(d =>
+      `${d.name} ${d.connected ? '✓' : '✗'} ${d.current ? '←active' : ''}`
+    ).join('\n');
+  };
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      Button('List devices', { onClick: OronBox.ui.action(listDevices, render) }),
+      Text(info),
+    ]),
+  );
+
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `device` 权限；只读操作是中风险，写操作（`connect`、`disconnect`、`install`、`apps.launch`、`apps.uninstall`）是高风险，按设备授权

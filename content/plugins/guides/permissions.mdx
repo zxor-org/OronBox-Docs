@@ -1,0 +1,119 @@
+---
+title: 插件权限
+description: OronBox 插件权限模型：能力声明、授权流程、四档决策、风险等级与持久化
+---
+
+OronBox 插件的权限分两层：**声明层**与**运行时授权层**插件必须在 `manifest.json` 的 `permissions` 里声明要使用的能力，声明外的能力包会被拒绝；运行时每调用一个受保护的宿主接口，会先经过权限检查，需要询问时才弹出授权请求
+
+## 能力白名单
+
+`permissions` 只接受以下 8 个能力，其他值会导致包被拒绝（错误信息 `Unsupported plugin permissions`）白名单校验只对非 legacy 插件生效：
+
+| 能力 | 含义 | 受控操作 |
+| --- | --- | --- |
+| `ui` | 渲染界面、打开页面、对话框与外部链接 | `ui.render`、`ui.openPage`、`ui.openExternal`、`ui.dialog`、`ui.getRenderSize`（`ui.update` 为 legacy 别名） |
+| `file` | 读写插件沙箱内的文件（`/plugin` 只读，`/data`、`/cache`、`/temp` 可写） | `file.read`、`file.write`、`file.list`、`file.stat`、`file.mkdir`、`file.copy`、`file.move`、`file.remove`、`file.pick`、`file.unload` |
+| `network` | 发起 HTTP/HTTPS 请求或下载到沙箱 | `network.fetch`（响应上限 16 MiB）、`network.download`（流式写文件） |
+| `interconnect` | 与设备上运行的应用收发消息（应用间通信） | `interconnect.send`、`interconnect.observe` |
+| `provider` | 注册/注销资源源，把插件接入社区资源目录 | `provider.register`、`provider.unregister` |
+| `device` | 读取已配对设备、连接/断开、安装/启动/卸载应用、切换表盘 | `device.list`、`device.info`、`device.connect`、`device.disconnect`、`device.apps.list`、`device.apps.launch`、`device.apps.uninstall`、`device.install`、`watchface.list`、`watchface.set` |
+| `protocol` | 监听或发送原始协议帧 | `protocol.observe`、`protocol.send`、`protocol.request` |
+| `appside` | 管理 Zepp OS 伴生服务生命周期、注入模拟消息、附加 ZML 钩子 | `appside.list`、`appside.start`、`appside.stop`、`appside.send`、`appside.inject`、`appside.sessions`、`appside.events`、`appside.clearEvents`、`appside.zml.*` |
+
+部分宿主接口不需要权限声明，调用时不触发任何检查：`log.*`（日志）、`storage.*`（键值配置）、`os.*`（系统信息）；`wasm.*` 只对 `hybrid` 运行时开放，也不要求权限声明
+
+### legacy 权限别名
+
+legacy 插件（无 `runtime` 字段）若声明了 AstroBox 旧能力名，按别名折算：
+
+| 新能力 | 旧能力名 |
+| --- | --- |
+| `file` | `filesystem` |
+| `protocol` | `debug` |
+| `device` | `device`、`thirdpartyapp`、`installer` |
+
+### 声明的权限如何展示
+
+- 安装/更新前：确认对话框列出该插件声明的全部权限
+- 插件详情页：权限以标签（chip）形式展示
+- 市场条目详情：同样列出声明的权限
+
+## 授权请求流程
+
+每次插件调用受保护的宿主接口，都会先经过授权检查，流程如下：
+
+1. 校验能力是否已声明：插件没有声明对应的能力却调用接口，直接抛错 `permission_not_declared`，不会弹窗
+2. 低风险操作直接放行，不询问
+3. 已存在授权（本次运行中或始终允许）直接放行
+4. 否则弹出授权请求，等待用户选择
+5. 同一插件的同一授权点并发请求会合并，只弹一次
+
+授权请求包含：插件 ID/名称、能力、操作、风险等级、操作描述、目标资源与作用域同一授权点的并发请求（例如插件同时触发多个网络请求）会被去重合并
+
+## 四档决策
+
+授权弹窗提供四个选项：
+
+| 决策 | 行为 |
+| --- | --- |
+| 允许本次 | 仅当前这次调用放行，不记录；下一次再触发同样操作会再次询问 |
+| 本次运行中 | 在插件运行时存续期间（直到运行时被关闭）不再询问 |
+| 始终允许 | 写入持久授权，之后不再询问 |
+| 拒绝 | 抛错 `permission_denied`，插件收到权限拒绝错误 |
+
+弹窗不可通过点击弹窗外部关闭；弹窗被关闭或未给出有效决策时按「拒绝」处理
+
+「本次运行中」的授权在以下情况会结束：关闭插件、插件更新/卸载、开启安全模式（以上动作都会关闭插件运行时）
+
+## 风险等级
+
+每个受控操作都有风险等级（`low` / `medium` / `high`），等级只决定两点：低风险操作**免询问**直接放行；中、高风险操作都需要用户授权
+
+| 风险 | 操作 |
+| --- | --- |
+| 低 | `ui.render`、`ui.update`、`ui.openPage`、`ui.getRenderSize`；`file.read`、`file.write`、`file.list`、`file.stat`、`file.mkdir`、`file.copy`、`file.move`、`file.remove` |
+| 中 | `ui.dialog`、`ui.openExternal`；`file.pick`、`file.unload`；`network.fetch`、`network.download`；`interconnect.send`、`interconnect.observe`；`provider.register`、`provider.unregister`；`device.list`、`device.info`、`device.apps.list`、`watchface.list`；`protocol.observe`；`appside.list`、`appside.sessions`、`appside.events` |
+| 高 | `device.connect`、`device.disconnect`、`device.apps.launch`、`device.apps.uninstall`、`device.install`、`watchface.set`；`protocol.send`、`protocol.request`；`appside.start`、`appside.stop`、`appside.send`、`appside.inject`、`appside.clearEvents`、`appside.zml.attach`、`appside.zml.request`、`appside.zml.call`、`appside.zml.detach` |
+
+## 授权粒度
+
+授权精确到「能力 + 操作 + 目标」：网络请求、外部链接、应用间通信、设备操作、协议操作与伴生服务操作会带上目标作为作用域，因此授权精确到具体目标：
+
+| 操作类别 | 作用域示例 |
+| --- | --- |
+| `network.*`、`ui.openExternal` | 目标域名/主机名 |
+| `interconnect.send` | 目标包名 |
+| `device.connect`、`device.disconnect` | 设备地址 |
+| `device.info`、`device.apps.list`、`device.install`、`watchface.list`、`protocol.*` | 当前设备名 |
+| `device.apps.launch`、`device.apps.uninstall` | 应用包名 |
+| `watchface.set` | 表盘 ID |
+| `appside.*` | 伴生服务应用 ID |
+
+其余操作（如文件读写）不区分作用域，授权键为「能力:操作」
+
+## 授权持久化
+
+- 「始终允许」的授权会持久保存，插件更新后不丢失
+- 「本次运行中」的授权只存在内存里，插件运行时关闭即清空
+- 插件更新（重新安装同 ID 的包）时，配置和「始终允许」的授权会保留
+
+## 撤销授权
+
+客户端目前没有逐项撤销授权的界面
+
+以下操作会清除授权：
+
+- **清除数据**：清空该插件的会话授权与持久授权，同时删除数据与缓存
+- **卸载**：清空授权并删除插件目录
+
+插件运行时报错时，错误对话框提供「清除数据」「卸载」「进入安全模式」三个处理入口
+
+## 安全模式
+
+安全模式是全局开关，开启后：
+
+- 立即关闭所有正在运行的插件
+- 插件无法再启动，调用时报错「Plugins are disabled in safe mode」
+- 开关状态持久化在应用设置中
+
+插件页顶部会显示安全模式横幅，可一键退出；插件出错时也能从错误对话框直接进入安全模式

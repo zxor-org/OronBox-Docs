@@ -1,0 +1,75 @@
+---
+title: Network 网络
+description: HTTP 请求：fetch 与 download
+---
+
+
+通过宿主发起 HTTP/HTTPS 请求，仅支持 `http://` 与 `https://` 协议
+
+
+### fetch(url, options)
+
+响应体限制 16 MiB；更大的文件用 `download`
+
+```js
+const resp = await OronBox.network.fetch('https://httpbin.org/json', {
+  method: 'GET',
+  headers: { 'Accept': 'application/json' },
+  body: base64data  // 可选，Base64 编码的请求体
+});
+// resp = { status: 200, headers: {...}, contentType: 'application/json',
+//          body: 'eyJoZWxsbyI6...' }
+
+// 解码响应体
+const text = atob(resp.body);
+const json = JSON.parse(text);
+```
+
+### download(url, path, options)
+
+直接把响应流式写入沙箱文件，适合大文件下载
+
+```js
+const result = await OronBox.network.download(
+  'https://example.com/file.bin',
+  '/data/file.bin',
+  { method: 'GET', headers: {} }
+);
+// result = { path: '/data/file.bin', bytesWritten: 1048576, status: 200 }
+```
+
+## 完整示例：JSON 抓取
+
+```js
+globalThis.activate = async (plugin) => {
+  let url = 'https://httpbin.org/json';
+  let result = 'Enter a URL and tap Fetch';
+  const { Column, Text, TextField, Button } = OronBox.ui;
+
+  const fetchJson = async () => {
+    try {
+      const resp = await OronBox.network.fetch(url);
+      const body = resp.body ? atob(resp.body) : '';
+      try {
+        result = JSON.stringify(JSON.parse(body), null, 2);
+      } catch (_) {
+        result = body.substring(0, 500);
+      }
+    } catch (e) { result = `Error: ${e.message}`; }
+  };
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      TextField({ value: url, onChange: v => { url = v; } }),
+      Button('Fetch', { onClick: OronBox.ui.action(fetchJson, render) }),
+      Text(result),
+    ]),
+  );
+
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `network` 权限（中风险），首次使用会请求授权

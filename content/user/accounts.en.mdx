@@ -1,0 +1,51 @@
+---
+title: Accounts
+description: BandBBS, Xiaomi, Huami and GitHub accounts — what each is for and how to sign in
+---
+
+Accounts live under Settings → Accounts & authorization. There are four, each with a different purpose:
+
+| Account | Sign-in method | Purpose |
+| --- | --- | --- |
+| BandBBS | Browser authorization | BandBBS resources, comments, creator center |
+| Xiaomi | Username + password | Sync bound Xiaomi devices (with authkeys) |
+| Huami | Username + password | Huami app store resources |
+| GitHub | Browser authorization (BandBBS first) | Publish AstroBox resources under your own account |
+
+Step 3 of the first-run wizard also offers sign-in; you can skip it and sign in later from Settings.
+
+## BandBBS
+
+Tap "Sign in with BandBBS" and complete the authorization in your browser. After signing in you can:
+
+- Access BandBBS community resources and take part in comments.
+- Look up **purchased resources** and install paid ones you own (BandBBS account page → Purchased resources → enter the resource ID).
+- Use the [Creator center](/en/creator) to publish resources.
+
+Re-sign in when the session expires.
+
+## Xiaomi
+
+Enter your username and password; sign-in happens locally in the app.
+
+- "Sign in and sync" imports the Xiaomi devices bound to your account — **only devices that carry an authkey are imported**, and you can then connect to them directly.
+- If **two-factor authentication (2FA)** is enabled, the app opens the verification page in an embedded window; sign-in continues after verification.
+- **2FA is not supported on the web**; an account with 2FA cannot sign in from the browser.
+- Credentials are saved only if you tick "Remember username and password".
+
+## Huami
+
+Enter your username and password to store the credentials the Zepp store needs, used for Huami app store resources.
+
+## GitHub
+
+Used to publish AstroBox resources under your own GitHub account:
+
+- **Sign into BandBBS first**: without it, the GitHub entry shows "Connect after signing into BandBBS", because the GitHub sign-in depends on the BandBBS session.
+- Tap connect and complete the GitHub authorization in your browser; the app continues automatically.
+
+## Common errors
+
+- "Xiaomi account or password is incorrect." — wrong credentials.
+- "Xiaomi two-factor verification incomplete. Please sign in again." — the 2FA flow was interrupted; sign in again and complete verification.
+- "OronBox sign-in expired, please sign in to BandBBS again." — the BandBBS session expired; sign in again.

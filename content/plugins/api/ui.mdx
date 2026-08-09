@@ -1,0 +1,209 @@
+---
+title: UI 渲染
+description: UI 渲染组件：render / openPage、布局与全部控件
+---
+
+
+插件通过组件树渲染界面，每个节点是一个 `{type, props, children}` 对象
+
+
+## 渲染
+
+```js
+OronBox.ui.render(tree);      // 在插件详情页内联渲染
+OronBox.ui.openPage(tree);    // 打开全屏页面
+```
+
+两者都接受一个根节点（通常是 Column）
+
+异步操作应先等待操作完成，再重新渲染界面
+
+`OronBox.ui.action(fn, render)` 返回一个包装函数：调用它时先执行 `fn`，完成后调用 `render`；在异步操作完成前手动渲染会显示过期状态
+
+```js
+const save = OronBox.ui.action(async () => {
+  await OronBox.storage.set('key', 'value');
+  status = 'Saved';
+}, render);
+```
+
+### update(nodes)
+
+`render` 的别名（legacy 兼容），行为相同
+
+### openExternal(url)
+
+用系统浏览器打开外部链接
+
+```js
+const result = await OronBox.ui.openExternal('https://example.com');
+// result = { opened: true }
+```
+
+### callback(fn)
+
+注册一个回调函数并返回回调 ID，用于需要自行管理回调 ID 的场景；`action(fn, render)` 是它的便捷封装（先执行 `fn` 再重渲染）
+
+```js
+const id = OronBox.ui.callback(() => {
+  console.info('invoked');
+});
+```
+
+## 获取渲染尺寸
+
+```js
+const size = await OronBox.ui.getRenderSize();
+// { width: 360, height: 480 }
+```
+
+## 原生对话框
+
+```js
+const result = await OronBox.ui.dialog({
+  title: 'Confirm',
+  message: 'Are you sure?',
+  buttons: [
+    { id: 'cancel', text: 'Cancel' },
+    { id: 'confirm', text: 'OK', primary: true },
+  ]
+});
+// result = { clickedBtnId: 'confirm' }
+```
+
+## Column / Row
+
+```js
+const { Column, Row, Spacer, Text } = OronBox.ui;
+
+Column({ gap: 12, padding: 16, align: 'start' }, [
+  Text('Title', { size: 20, weight: 'bold' }),
+  Row({ gap: 8 }, [Text('Left'), Spacer(), Text('Right')]),
+]);
+```
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `gap` | number | 子元素间距 |
+| `padding` | number | 内边距 |
+| `align` | 'start'/'center'/'end' | 交叉轴对齐 |
+
+## LazyColumn
+
+可滚动的列
+
+```js
+LazyColumn({ gap: 8 }, items.map(item => Text(item)));
+```
+
+## Spacer
+
+固定 16px 的占位；在 `Row` 内会被弹性撑满，在 `Column` 内是固定间距
+
+## Text
+
+```js
+Text('Plain text');
+Text('Title', { size: 20, weight: 'bold', color: '#333', maxLines: 2 });
+```
+
+## Button
+
+```js
+Button('Tap', { onClick: () => save() });
+Button('Primary', { primary: true, onClick: submit });
+```
+
+## Image
+
+```js
+Image('/data/icon.png', { width: 64, height: 64, radius: 12, fit: 'cover' });
+```
+
+图片从插件沙箱路径读取，单张不超过 4 MiB；`fit` 支持 `cover`、`contain`、`fill`、`fitWidth`、`fitHeight`、`none`、`scaleDown`
+
+## Divider / Badge
+
+```js
+Divider({ thickness: 1 });
+Badge({ count: 3 }, Button('Messages'));
+```
+
+## HtmlDocument
+
+渲染 HTML 片段（如带样式的富文本结果）
+
+```js
+HtmlDocument({ value: '<b>Hello</b>' });
+```
+
+## 输入组件
+
+```js
+TextField({ value: 'default', placeholder: 'Input...', multiline: true, onChange: v => save(v) });
+Switch(true, { onChange: v => save('on', v) });
+Checkbox(false, { label: 'Remember me', onChange: v => save('remember', v) });
+Slider(0.5, { min: 0, max: 1, onChange: v => save('volume', v) });
+Dropdown('A', { options: ['A', 'B', 'C'], onChange: v => save('opt', v) });
+```
+
+## 容器组件
+
+```js
+Card({}, Row({ gap: 8 }, [Image('/plugin/icon.png', { width: 32 }), Text('Content')]));
+Modal({ title: 'Settings', onDismiss: refresh }, Text('Modal body'));
+Tooltip({ text: 'Help text' }, Text('Hover me'));
+```
+
+## Tabs
+
+```js
+Tabs({
+  scrollable: true,
+  tabs: [{ id: 'a', label: 'Tab A' }, { id: 'b', label: 'Tab B' }],
+  onChange: v => switchTab(v)
+});
+TabContent('a', activeTab, Text('Content A'));
+```
+
+标签很多时设置 `scrollable: true`，标签栏会滚动而不是压缩标签文字
+
+选中态由 `TabContent` 控制：`activeId` 等于 `tabId` 时才显示内容；`Tabs` 本身不读取 `activeId`
+
+## 进度
+
+```js
+CircularProgress({ size: 24 });
+LinearProgress(45, { max: 100 });
+```
+
+## 通用属性
+
+所有组件都支持：`visible`、`disabled`、`opacity`、`padding`
+
+## 完整示例：设置页
+
+```js
+globalThis.activate = async (plugin) => {
+  const { Column, Row, Card, Text, Button, Switch, Slider, Dropdown, Divider, Spacer } = OronBox.ui;
+  let notify = true, brightness = 0.5, theme = 'auto';
+  const submit = () => { /* 保存设置 */ };
+
+  const render = () => {
+    OronBox.ui.render(
+      Column({ padding: 16, gap: 12 }, [
+        Text('Settings', { size: 22, weight: 'bold' }),
+        Card({}, Column({ gap: 8 }, [
+          Row({ gap: 8 }, [Text('Notifications'), Spacer(), Switch(notify, { onChange: v => { notify = v; render(); } })]),
+          Divider(),
+          Row({ gap: 8 }, [Text('Brightness'), Slider(brightness, { onChange: v => { brightness = v; render(); } })]),
+          Divider(),
+          Row({ gap: 8 }, [Text('Theme'), Spacer(), Dropdown(theme, { options: ['auto','light','dark'], onChange: v => { theme = v; render(); } })]),
+        ])),
+        Row({ gap: 12 }, [Button('Cancel'), Button('Save', { primary: true, onClick: submit })]),
+      ])
+    );
+  };
+  render();
+};
+```

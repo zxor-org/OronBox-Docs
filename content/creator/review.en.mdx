@@ -1,0 +1,39 @@
+---
+title: Review & status
+description: The review flow after submitting, and what each resource status means
+---
+
+## Review flow
+
+A submitted resource goes through OronBox review. Once approved it goes live and syncs to BandBBS / AstroBox (see [Publishing](./publish)). Rejected resources come back with **review feedback**; fix and resubmit.
+
+## Resource status
+
+| Status | Meaning |
+| --- | --- |
+| Draft | Not submitted yet; only you can see it |
+| Pending review | Submitted, waiting for review |
+| Approved | OronBox review passed |
+| External review | Passed OronBox review, waiting on an external platform (e.g. the AstroBox maintainers) |
+| Rejected | Sent back with a list of required changes; fix and resubmit |
+| Published | After approval and external sync complete, the resource is live in the store |
+| Suspended | Hidden from the store; can be restored |
+| Frozen | Frozen by an admin; content can't be changed, only an admin can unfreeze |
+| Publish failed | Syncing to an external platform failed |
+| Superseded | Replaced by a newer revision |
+| Cancelled | The flow was cancelled |
+
+## After approval
+
+- The resource is visible in the store; users can download it and give coins.
+- From the workspace you can **update the resource** (new revision), **take it down** or **restore it**.
+- Status changes caused by an admin include a reason.
+
+## Admin actions
+
+- **Admin takedown**: the resource is suspended with a reason. You can edit and resubmit; it's restored automatically once the resubmission passes review.
+- **Frozen**: content can't be modified; only an admin can unfreeze. While frozen the resource can't be edited or submitted.
+
+## Collection review
+
+Collection info is reviewed too: its status is "collection info pending review" or "published". See [Collections](./collections).

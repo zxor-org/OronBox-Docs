@@ -1,0 +1,29 @@
+---
+title: Firmware
+description: Checking for updates, downloading firmware and installing local files
+---
+
+Firmware management lives on the device page under **Firmware update**. On the firmware page:
+
+- The **current firmware version** is shown (or "Could not get the current firmware version"), and an update check runs automatically.
+- **Download latest full package** adds the online firmware package to the download queue, then to the install queue.
+- **Local firmware install** picks a local firmware file; after content analysis and confirmation it joins the install queue.
+
+## Online firmware source
+
+| Device type | Online updates | Notes |
+| --- | --- | --- |
+| Xiaomi / VelaOS | ✅ Available | Checks for updates and downloads the full package automatically |
+| ZeppOS | ❌ Not yet | Shows "No online firmware source for this device type yet"; use local firmware files instead |
+
+## Installing firmware
+
+- Xiaomi / VelaOS: pushed through the device's install channel.
+- ZeppOS: installed through the generic ZeppOS channel (ZIP package).
+- "Firmware / tools" resources from the library can also be installed; the platform is checked against the connected device first.
+
+## Risk warning
+
+- Flashing firmware is a **high-risk operation**: a mismatched, interrupted or corrupted flash can leave the device unbootable or require after-sales service.
+- Make sure the firmware source is trustworthy and matches the device model, and keep the battery charged and the connection stable.
+- During a firmware update the app pauses other activity (the firmware transfer takes over the connection).

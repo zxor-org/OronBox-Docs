@@ -1,0 +1,9 @@
+{
+  "title": "指南",
+  "pages": [
+    "runtime",
+    "permissions",
+    "distribution"
+  ],
+  "defaultOpen": true
+}

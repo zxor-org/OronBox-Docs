@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "index",
+    "install",
+    "connect",
+    "devices",
+    "firmware",
+    "accounts",
+    "resources",
+    "settings",
+    "cli",
+    "faq"
+  ]
+}

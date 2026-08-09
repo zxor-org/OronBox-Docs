@@ -1,0 +1,75 @@
+---
+title: Explore
+description: Browse resources, install to your device, install local files, collections and coins
+---
+
+The **Explore** tab is the resource library: search, browse and install device resources (watchfaces, quick apps, miniprograms, firmware).
+
+## Resource sources
+
+The library aggregates several sources:
+
+| Source | What it is |
+| --- | --- |
+| OronBox | Resources maintained by the OronBox server |
+| AstroBox Repo | The AstroBox community repository |
+| BandBBS | BandBBS (Mi Band community) resources; some require a BandBBS account |
+| Huami app store | Huami store resources, miniprograms only; shown only while a ZeppOS device is connected |
+| Plugin sources | Sources registered dynamically by plugins with the right permission |
+
+## Browsing and searching
+
+- Toggle between **card view / list view** (BandBBS and Huami are always list view).
+- Search by keyword.
+- **Filter** supports:
+  - **Type**: quick app / miniprogram / watchface / firmware — pick one at a time
+  - **Device / section**: each source has its own device or section IDs
+  - **Free**: free resources only, hides paid and force-paid ones
+  - **Hide paid / Hide force-paid**: the force-paid filter is only available on AstroBox Repo
+- Scrolling to the end shows "You've reached the end — check out resources from other sources?".
+
+## Resource details
+
+The detail page shows name, summary, download count, version, changelog, preview images, supported devices, platform & type, collection links ("From collection …"), comments and a report entry. Some resources carry a **Featured** badge.
+
+- Comments require a BandBBS account and go through moderation (pending / deleted / rejected by community guidelines).
+- For external links, the app warns that the site is third-party operated and not affiliated with OronBox.
+
+## Downloading and installing
+
+1. Tap **Download** on the detail page; the task joins the download queue and the button turns into "In queue".
+2. When the download finishes, installation starts automatically (Settings → Queue → Auto-install, on by default; turn it off to confirm manually).
+3. Installation targets the **currently connected device**. The platform is checked first: ZeppOS resources only install to ZeppOS devices, VelaOS resources only to Xiaomi / Vela devices.
+
+Track download/install progress on the queue page (download queue / install queue; pause, start, clear).
+
+## Installing local files
+
+When you pick a local file, OronBox **analyzes the file content** (file header and package structure, not the extension) and shows a confirmation:
+
+| Analysis result | What you see | Options |
+| --- | --- | --- |
+| Unrecognized type | "OronBox cannot identify the actual resource type" | Cancel / continue with the selected type |
+| Platform mismatch | "This looks like a \{platform\} device resource; the current device does not support it" | Got it / Force install |
+| Type mismatch | "This looks like a \{detected type\} resource, but you selected \{selected type\}" | Cancel / selected type / detected type |
+| Normal | "Install \{file\} (\{size\})?" | Cancel / Install |
+
+- For "unrecognized", "platform mismatch" and "continue with selected type", the confirm button has a **3-second countdown** and still needs a **manual tap** — the countdown only makes you read the warning, it doesn't auto-install.
+- Force-installing across platforms can cause unpredictable problems; use it only when you're sure the file matches the device.
+
+## Collections
+
+Resources can be grouped into **collections** (created by their authors), which show stats like "coins: \{count\}". A resource's detail page states which collection it comes from. See the [Creator guide](/en/creator) for creating collections.
+
+## Coins
+
+Coins are how you support creators (requires sign-in):
+
+- Earning coins: **daily check-in**, 1–5 coins per day.
+- On a resource detail page, tap **Coin** to give 1 or 2 coins.
+- Coins can't be taken back; they help the resource get more exposure; creators receive **10%** of the coins given as earnings.
+- Your balance and the check-in entry are on the Home tab → "Resource coins".
+
+## Clean mode
+
+Settings → Appearance & navigation → Clean mode lets you toggle individual resource sources and feature entries (main navigation, home feed, comments, creator center, Huami app store, etc.). Disabled items disappear.

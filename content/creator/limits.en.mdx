@@ -1,0 +1,35 @@
+---
+title: Limits
+description: "Publishing requirements: name, images, files and device bindings"
+---
+
+## Name and summary
+
+- **Resource names** have a length limit (validated by character count in the editor; too-long names can't be submitted).
+- The **slug** usually can't be changed after creation — pick it carefully.
+
+## Images
+
+- Supported: **PNG / JPEG / WebP**; undecodable images are rejected.
+- **Icon**: 1:1. Optional on OronBox; **required on AstroBox**. Non-square icons may display badly on AstroBox.
+- **Cover**: 3:2. Optional on OronBox; **required on AstroBox**. Non-3:2 covers may display badly on AstroBox.
+
+## Resource files
+
+- Packages must be **Vela quick apps or watchfaces**; anything else is rejected ("This file is not a Vela quick app or watchface").
+- When adding several packages, each must match the selected resource type; mismatched files aren't added.
+- If a file's type differs from the selected type, the wizard warns "file type mismatch" — you can keep it, but confirm before submitting.
+
+## Device bindings
+
+- Each **BandBBS section maps to one package**: binding several packages to the same section is flagged and blocked.
+- If a device's BandBBS section can't be resolved automatically, set the section manually; to publish to BandBBS you must select at least one supported device.
+
+## Import
+
+- When importing existing resources from BandBBS / AstroBox (experimental), **paid BandBBS resource files are encrypted and can't be imported**.
+- Imported content may be missing or misidentified — check every item before submitting.
+
+## File size
+
+- Uploads / downloads have a size limit; exceeding it shows "The selected file is too large".

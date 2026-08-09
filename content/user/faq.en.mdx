@@ -1,0 +1,100 @@
+---
+title: FAQ
+description: "Common issues by topic: connection, Bluetooth, web, accounts, resources & installation, firmware"
+---
+
+## Connection & Bluetooth
+
+**"Bluetooth is unavailable. Please check that Bluetooth is enabled and the system permission allows OronBox to use it."**
+
+Bluetooth is off or the permission is missing. Turn Bluetooth on and allow OronBox in the system settings. On macOS, accept the permission prompt on first launch.
+
+**"Connection failed. Please make sure Bluetooth permission is granted and Bluetooth is on, the device is nearby and not in use by another tool or device, and the device-side 'Connect to a new phone' mode is enabled."**
+
+This covers timeouts, rejections and busy devices. Check: Bluetooth permission and switch, device battery and distance, whether another app or device is using it (e.g. the official client), and whether "Connect to a new phone" is enabled on the device.
+
+**"Bluetooth connection lost, please reconnect the device."**
+
+The connection dropped mid-way; reconnect.
+
+**"Operation timed out. Make sure the device is still nearby and try again."**
+
+The operation didn't finish in time; check the device is nearby and connectable, then retry.
+
+**"The device is not ready yet. Connect and authenticate it first."**
+
+The operation needs a connected, authenticated device.
+
+**"Required BLE characteristics not found. Reconnect the device or check whether the device supports this feature."**
+
+The device doesn't expose the Bluetooth channels the protocol needs, or the connection is in a bad state. Reconnect; if the device itself lacks the feature, it's unavailable.
+
+**"No usable \{transport\} endpoint found. Complete system Bluetooth pairing first, then rescan."**
+
+Pair the device in the system Bluetooth settings first, then rescan.
+
+## Web
+
+**"Your browser does not support Web Serial. Please use a browser that supports Web Serial, such as Chrome / Edge."**
+
+Web connects Xiaomi-family devices over Web Serial; use Chrome / Edge. Devices and authkeys stay in the current browser — switching browsers or clearing site data means reconnecting.
+
+**Can't connect a ZeppOS device on the web?**
+
+ZeppOS devices connect over Web Bluetooth on the web, which needs both browser and system support.
+
+## Accounts
+
+**"Xiaomi account or password is incorrect."**
+
+Wrong credentials.
+
+**"Xiaomi two-factor verification incomplete. Please sign in again."**
+
+The 2FA flow was interrupted. Sign in again and complete verification in the embedded window; 2FA isn't supported on the web.
+
+**"OronBox sign-in expired, please sign in to BandBBS again."**
+
+The BandBBS session expired or was revoked; sign in again. Features that depend on the BandBBS login (like GitHub) are affected too.
+
+**"Please sign into BandBBS first in Settings." / "Please sign into the Huami account first in Settings."**
+
+The feature needs that account; sign in under Settings → Accounts & authorization.
+
+## Resources & installation
+
+**"Unsupported or unrecognized file type."**
+
+The local file isn't a supported resource. OronBox judges by content, not extension; make sure the file is a complete resource package.
+
+**Install prompts a platform mismatch — can I force install?**
+
+A warning appears with a 3-second countdown; after it you can tap "Force install" manually. Forcing can cause unpredictable problems — use it only when you're sure the file matches the device. ZeppOS resources on VelaOS devices (or vice versa) usually fail anyway.
+
+**"Failed to connect to the service. Check your network and try again." / "The service is temporarily unavailable. Please try again later."**
+
+The first is a network issue (offline, server unreachable); the second is the server being temporarily unavailable. Check the network or wait and retry.
+
+**"Too many requests, please try again later."**
+
+Rate-limited; wait a moment.
+
+**"The selected file is too large."**
+
+The file exceeds the size limit.
+
+**"Certificate verification failed. If you're using a proxy, disable its HTTPS interception for this app, or make sure the certificate is trusted on this system."**
+
+Usually caused by an HTTPS-intercepting proxy. Disable HTTPS interception for the app, or trust the certificate on the system.
+
+## Firmware
+
+**A ZeppOS device shows "No online firmware source for this device type yet."**
+
+Online firmware updates aren't implemented for ZeppOS yet; only local firmware installs are possible. Xiaomi / Vela devices can check online. See [Firmware](./firmware).
+
+## General
+
+**"Operation failed: \{detail\}"**
+
+A fallback message for errors that don't match a known type. Check Settings → Run logs, or file a ticket via Feedback.

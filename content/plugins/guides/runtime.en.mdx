@@ -1,0 +1,249 @@
+---
+title: Runtime
+description: "The plugin runtime model: runtime types, the WASI sandbox, host API and UI trees"
+---
+
+Plugin code runs inside a sandboxed runtime in OronBox.
+
+The runtime determines the entry language, how host capabilities are injected, and how the file system is exposed.
+
+## Runtime types
+
+The `runtime` field in `manifest.json` selects the runtime; omitting it means legacy.
+
+| `runtime` value | Engine | Entry file |
+| --- | --- | --- |
+| `js` | QuickJS sandbox | `.js` / `.mjs` / `.cjs` |
+| `wasm` | WASI sandbox | `.wasm` |
+| `hybrid` | JS engine plus WASM modules | `.js` / `.mjs` / `.cjs` |
+| (omitted) | Same engine as `js`, with the AstroBox v1 compatibility layer | JS |
+
+Valid values are `js`, `wasm` and `hybrid`; anything else is rejected when the manifest is parsed.
+
+- `js` plugins: the entry JS runs in the QuickJS sandbox; host APIs are exposed through the global `OronBox` object.
+- `wasm` plugins: the entry `.wasm` runs in the WASI sandbox; host calls go through wasm imports, and no JS bootstrap is injected, so there is no `setTimeout` / `setInterval`.
+- `hybrid` plugins: the entry JS works like `js`, but can additionally load and call `.wasm` modules through `OronBox.wasm`.
+- legacy plugins: the `runtime` field is omitted; the entry still runs on the JS engine but gets the AstroBox v1 compatibility layer (the global object is `AstroBox`, not `OronBox`).
+
+## Sandbox and file system
+
+Plugin storage is exposed as four virtual roots:
+
+| Root | Area | Access |
+| --- | --- | --- |
+| `/plugin` | package | Read-only (the installed package contents, including the entry and resource files) |
+| `/data` | data | Writable |
+| `/cache` | cache | Writable |
+| `/temp` | temporary | Writable |
+
+The read-only nature of `/plugin` is enforced by the host.
+
+The WASI sandbox only exposes the file system and standard I/O; no network, clocks, environment variables or other WASI capabilities.
+
+## WASM plugins
+
+### Instantiation
+
+The entry `.wasm` must export one of the following as its start entry:
+
+- `oronbox_start` (OronBox-specific)
+- `_start` (standard WASI)
+
+If neither exists, startup fails; stdout / stderr are captured and reported as `log.info` / `log.error`.
+
+### Host function imports
+
+WASM modules get host capabilities through the import table. The import module name is always `oronbox`, with 5 functions:
+
+| Import | Signature | Description |
+| --- | --- | --- |
+| `request` | `(methodPtr, methodLen, argsPtr, argsLen) -> i32` | Starts a host call; the method name and arguments array are written as UTF-8 into plugin memory; returns a request id |
+| `poll` | `(requestId) -> i32` | Checks request status: `0` in progress, `1` success, `2` failure; `-1` if the request doesn't exist |
+| `result_len` | `(requestId) -> i32` | Response byte length; `-1` if the request doesn't exist |
+| `result_read` | `(requestId, pointer, capacity) -> i32` | Copies the response into plugin memory; returns a negative required length if capacity is insufficient |
+| `result_drop` | `(requestId)` | Releases the request result |
+
+Requests are asynchronous: `request` returns an id immediately and the host fills the result in the background; read it by polling `poll` / `result_len` / `result_read`. When a request completes, the host calls the instance export `oronbox_on_result(requestId)`.
+
+The response body is UTF-8 JSON:
+
+```json
+{"ok": true, "value": <return value>}
+```
+
+On failure:
+
+```json
+{"ok": false, "error": "<error message>"}
+```
+
+### Other exports a plugin must provide
+
+| Export | Description |
+| --- | --- |
+| `oronbox_alloc(len) -> i32` | Allocates memory the host uses to write arguments / read results; returns a pointer |
+| `oronbox_free(ptr, len)` | Frees that memory |
+| `oronbox_callback(callbackId, jsonArguments)` | Receives host callbacks (e.g. provider queries, UI events); arguments are two `(ptr, len)` pairs |
+| `oronbox_event(name, payload)` | Receives events (e.g. `protocol.data`); payload is a string, also `(ptr, len)` pairs |
+| `oronbox_on_result(requestId)` | Called once after a host call completes |
+
+`oronbox_alloc` is required — the host depends on it to pass strings in and read string results out.
+
+## Host API: the `OronBox` global
+
+JS runtimes (js / hybrid) inject a frozen global `OronBox` (non-writable, non-configurable) with these namespaces:
+
+| Namespace | Methods |
+| --- | --- |
+| `storage` | `get(key)` `set(key, value)` `remove(key)` `clear()` |
+| `file` | `read(path, options)` `write(path, data, options)` `list(path)` `stat(path)` `mkdir(path)` `copy(source, destination)` `move(source, destination)` `remove(path)` `pick(options)` `unload(path, options)` |
+| `network` | `fetch(url, options)` `download(url, path, options)` |
+| `interconnect` | `send(packageName, data)` `onMessage(fn)` (returns an unsubscribe function) |
+| `provider` | `register(definition)` `unregister(id)` |
+| `device` | `list()` `info(id)` `connect(id)` `disconnect(id)` `apps.list(id)` `apps.launch(packageName, options)` `apps.uninstall(packageName)` `install(path, options)` |
+| `protocol` | `send(data, options)` `request(data, options)` `observe(fn)` (returns an unsubscribe function) |
+| `os` | `arch()` `hostname()` `locale()` `platform()` `version()` `language()` `appearance()` `timezone()` |
+| `watchface` | `list(deviceId)` `set(watchfaceId, deviceId)` |
+| `appside` | `list()` `start(appId)` `stop(appId)` `send(appId, hexData)` `inject(appId, hexData)` `sessions()` `events(appId)` `clearEvents(appId)` `attach(options)` |
+| `ui` | `render(tree)` `update(nodes)` `openPage(tree)` `openExternal(url)` `getRenderSize()` `dialog(opts)` `callback(fn)` `action(fn, render)` plus node builders (`Column`, `Row`, `Text`, `Button`, `Image`, ...) |
+| `wasm` | `load(path, options)` |
+
+### Call semantics
+
+Host dispatch is asynchronous. From the JS side:
+
+- A non-Promise return value is returned immediately.
+- A Promise return becomes a Promise on the JS side, resolved via `.then` / `await`.
+
+Operations that wait for a result (`network.fetch`, `device.connect`, `file.read`, `protocol.request`, `ui.dialog`) are Promises on the JS side.
+
+### Binary data encoding
+
+The host and JS do not pass binary directly; it is base64-encoded, except where text is used:
+
+- `file.read`: base64 by default; with `options.encoding` of `utf8` / `utf-8` / `text` the decoded string is returned; `options.offset` / `options.length` slice the file
+- `file.write`: `data` is decoded as base64 by default; with a text `options.encoding` it is encoded as UTF-8, and `options.append: true` appends
+- `protocol.request`: returns `{data: base64}` (the raw protocol response)
+- `protocol.send`: `data` is decoded as base64 and sent as raw bytes
+- `network.fetch`: the request body `options.body` is tried as base64 first, then UTF-8; the response is `{status, headers, contentType, body}` with `body` as base64; responses over 16 MiB fail, so use `network.download`
+- `appside.send` / `appside.inject`: `hexData` is a hex string
+
+### Response shapes
+
+| Method | Response |
+| --- | --- |
+| `storage.get` | The stored value (any JSON), or `null` if never set |
+| `storage.set` / `remove` / `clear` | `null` |
+| `file.read` | base64 or UTF-8 string |
+| `file.write` / `mkdir` / `copy` / `move` / `remove` | `null` |
+| `file.list` | `[{path, size, isDirectory}]` |
+| `file.stat` | `{path, size, isDirectory}` or `null` |
+| `file.pick` | `{name, path, size}`, or `null` on cancel |
+| `file.unload` | `{exported, cancelled?, name?}` |
+| `network.fetch` | `{status, headers, contentType, body}` or `{error}` |
+| `network.download` | `{path, bytesWritten, status}` |
+| `interconnect.send` | `null` |
+| `provider.register` / `unregister` | `null` |
+| `device.list` | `[{id, name, connectType, codename?, connected, current}]` |
+| `device.info` / `connect` | `{id, name, codename?, battery?, model?, firmwareVersion?}` |
+| `device.apps.list` | `[{packageName, name, versionCode, canRemove}]` |
+| `device.apps.launch` / `uninstall` / `device.install` | `null` |
+| `protocol.request` | `{data: base64}` |
+| `protocol.send` | `null` |
+| `os.arch` / `hostname` / `locale` / `platform` / `version` / `language` | string; `os.timezone` is an integer (minutes) |
+| `os.appearance` | `"dark"` or `"light"` |
+| `watchface.list` | `[{id, name, current}]` |
+| `watchface.set` | `null` |
+| `appside.list` | array of numbers |
+| `appside.sessions` | `[{appId, version, port1, port2, extra, watchSessionOpen}]` |
+| `appside.events` | `[{timestamp, type, message, direction?, source?, payload?}]` (`payload` is base64) |
+| `ui.getRenderSize` | `{width, height}` |
+| `ui.dialog` | `{clickedBtnId}` or `{cancelled: true}` |
+
+### Event payloads (protocol / interconnect)
+
+Callbacks registered with `OronBox.protocol.observe(fn)` and `OronBox.interconnect.onMessage(fn)` receive a string payload which the callback JSON-parses (except legacy events, see below):
+
+- `protocol.data`: `{"data": "<base64>"}` — base64 of the raw protocol frame
+- `interconnect`: `{"packageName": "<package name>", "data": "<utf8-decoded text>"}`
+- legacy plugins: the event name is `onQAICMessage_<package>`, and the payload is raw text (not JSON-parsed)
+
+### `OronBox.wasm`
+
+`OronBox.wasm.load(path, options)` reads `.wasm` bytes from plugin storage (attaching the WASI sandbox unless `options.wasi` is `false`), instantiates them, and returns a frozen object:
+
+```js
+const mod = await OronBox.wasm.load('/lib/codec.wasm');
+const id = mod.id; // "wasm_1"
+mod.call('exportName', arg1, arg2);          // call an export, returns the array of return values
+mod.readMemory(offset, length, 'memory');    // read memory, returns base64
+mod.writeMemory(offset, data, 'memory');     // write memory, data is base64
+mod.dispose();                               // destroy the instance
+```
+
+- `id` looks like `wasm_1`, allocated incrementally
+- `call` returns the export's array of return values
+- `readMemory` / `writeMemory` default to the `'memory'` parameter
+- Instances are cached per plugin and destroyed when the plugin closes
+
+The `wasm` namespace is only available to hybrid plugins.
+
+## Plugin window and UI
+
+### Event flow
+
+After the JS side calls `OronBox.ui.render(tree)` or `OronBox.ui.openPage(tree)`, the host parses the UI tree and updates the interface:
+
+- `ui.render` updates the current page content
+- `ui.openPage` pushes a new standalone page
+- `ui.update(nodes)` is an alias of `ui.render` (legacy compatibility)
+
+Widget interactions (button clicks, input changes, ...) are sent back to the host as callback ids.
+
+### Tree structure
+
+Nodes are `{type, props, children}`; function values in props are replaced by callback ids before reaching the host. The host validates: the tree must be an object, nodes must have a `type`, and each node may have at most 256 children (a legacy flat list is capped at 256 entries).
+
+`Image` nodes are special-cased: `props.src` (a path inside plugin storage) is replaced by `props.data` (base64 content); images must be ≤ 4 MiB.
+
+Supported node types:
+
+`Column` `Row` `LazyColumn` `Spacer` `Text` `HtmlDocument` `Button` `TextField` `Switch` `Checkbox` `Slider` `Dropdown` `Image` `Card` `Divider` `Badge` `CircularProgress` `LinearProgress` `Modal` `Tooltip` `Tabs` `TabContent`
+
+Common props:
+
+| prop | Effect |
+| --- | --- |
+| `visible` | Not rendered when `false` (visible by default) |
+| `disabled` | Blocks pointer events |
+| `opacity` | 0–1 transparency |
+| `padding` | Number, padding on all sides |
+
+Common nodes:
+
+- `Text`: `value`, `size`, `color` (or `text-color`, supports `#rgb` / `#rrggbb`), `weight` (`bold` / `medium`), `align`, `maxLines`
+- `Button`: `text`, `primary` (filled vs. outlined), `onClick`
+- `TextField`: `value`, `placeholder`, `multiline`, `onChange` (carries the current text on blur)
+- `Switch` / `Checkbox`: `checked`, `onChange`
+- `Slider`: `value`, `min`, `max`, `onChange`
+- `Dropdown`: `value`, `options` (string array), `onChange`
+- `Image`: `data` (base64), `width`, `height`, `radius`, `fit` (`contain` / `fill` / `fitWidth` / `fitHeight` / `none` / `scaleDown`, default `cover`)
+- `Tabs`: `tabs` (`[{id, label}]`), `onChange` (the selected tab id), `scrollable`; `TabContent`: `tabId`, `activeId`
+- `Modal`: `title`, `onDismiss`
+- `Badge`: `count` (shows `99+` above 99)
+- `HtmlDocument`: `value` (HTML content)
+
+Unknown types render as empty nodes.
+
+## Timers
+
+`setTimeout` / `setInterval` / `clearTimeout` / `clearInterval` are available in the JS runtime; errors thrown by timer callbacks are only logged and do not affect the runtime.
+
+WASM plugins get no JS bootstrap, so they have no timer interface.
+
+## Lifecycle and error handling
+
+- Startup: the runtime is created lazily when the plugin is opened, a UI callback fires, or the host calls the plugin; the entry script may define an optional `activate(plugin)` function which is called on startup.
+- Shutdown (uninstall, clear data, safe mode, host shutdown): all timers are cancelled, the runtime and WASM instances are destroyed, and sandbox data is synced.
+- Unhandled Promise rejections are reported to the log; recognizable transient errors (device not ready, transport dropped, timeout) are only logged.
+- Unrecoverable errors record a failed plugin state and the UI shows an error dialog with Uninstall / Clear data / Enable safe mode actions.

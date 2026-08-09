@@ -1,0 +1,77 @@
+---
+title: Protocol 原始协议
+description: 设备原始协议：send / request / observe
+---
+
+
+在当前设备上读写原始蓝牙协议帧数据使用 Base64 编码
+
+**警告：原始协议操作可能干扰正常的设备通信**
+
+
+### send(base64Payload, options?)
+
+```js
+await OronBox.protocol.send(btoa('\x01\x00'));
+```
+
+### request(base64Payload, options?)
+
+发送并等待响应
+
+```js
+const response = await OronBox.protocol.request(btoa('\x01\x00'));
+```
+
+### observe(callback)
+
+被动观察所有原始协议数据（只读，不打断正常分发）
+
+```js
+const stop = await OronBox.protocol.observe(({ data }) => {
+  // data 是 Base64 编码的原始字节
+  console.info('Protocol data:', data);
+});
+
+await stop();
+```
+
+## 完整示例：协议监视器
+
+```js
+globalThis.activate = async (plugin) => {
+  let hexInput = '';
+  let output = '';
+  const { Column, Text, TextField, Button } = OronBox.ui;
+
+  OronBox.protocol.observe(({ data }) => {
+    const raw = atob(data);
+    let hex = '';
+    for (let i = 0; i < raw.length; i++)
+      hex += raw.charCodeAt(i).toString(16).padStart(2, '0');
+    output = `Received: ${hex}`;
+    render();
+  });
+
+  const sendHex = async () => {
+    const bytes = hexInput.match(/../g)
+      ?.map(b => String.fromCharCode(parseInt(b, 16))).join('') ?? '';
+    await OronBox.protocol.send(btoa(bytes));
+    output = `Sent: ${bytes.length} bytes`;
+  };
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      TextField({ value: hexInput, onChange: v => { hexInput = v; } }),
+      Button('Send Hex', { onClick: OronBox.ui.action(sendHex, render) }),
+      Text(output || 'Waiting...'),
+    ]),
+  );
+
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `protocol` 权限；`observe` 是中风险，`send` 与 `request` 是高风险

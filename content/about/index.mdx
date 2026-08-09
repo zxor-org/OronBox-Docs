@@ -1,0 +1,41 @@
+---
+title: 关于 OronBox
+description: OronBox 是什么、架构、开源与法律文档
+---
+
+## OronBox 是什么
+
+OronBox 是社区维护的第三方开源穿戴设备管理工具
+
+它可以连接 VelaOS / 小米与 ZeppOS 设备，查看设备信息，管理应用和表盘，安装社区资源，并支持插件扩展
+
+OronBox 与设备厂商无关，未获得厂商认可或授权，也独立于米坛、AstroBox、GitHub、Cloudflare 等第三方平台
+
+## 架构
+
+| 组件 | 说明 |
+| --- | --- |
+| 客户端 | Flutter 应用，支持 Windows / macOS / Linux / Android / Web（iOS 不支持） |
+| 服务端 | Go 实现，提供账号、资源库、审核与发布服务，也支持自行部署 |
+| 命令行工具 | 无 GUI 环境下管理设备、安装资源、访问社区源、控制后台任务 |
+
+官方在线服务与自行部署的 OronBox Server 相互独立
+
+## 开源与许可
+
+- 客户端源码：[OronBox](https://github.com/zxor-org/OronBox)
+- 服务端源码：[OronBox-Server](https://github.com/zxor-org/OronBox-Server)
+- 许可：GNU Affero General Public License v3.0（AGPL v3.0）
+
+## 法律文档
+
+- [用户协议与免责声明](https://github.com/zxor-org/OronBox-Server/blob/main/internal/legal/docs/terms.zh.md)
+- [隐私说明](https://github.com/zxor-org/OronBox-Server/blob/main/internal/legal/docs/privacy.zh.md)
+- [资源发布与审核规则](https://github.com/zxor-org/OronBox-Server/blob/main/internal/legal/docs/review-rules.zh.md)
+- [资源发布协议](https://github.com/zxor-org/OronBox-Server/blob/main/internal/legal/docs/resource-publishing.zh.md)
+
+## 联系与反馈
+
+- 意见反馈：应用内「设置 → 意见反馈」提交工单
+- 公开讨论区：[OronBox Discussions](https://github.com/zxor-org/OronBox/discussions)
+- QQ 群：应用内「设置 → 关于」查看

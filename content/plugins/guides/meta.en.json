@@ -1,0 +1,9 @@
+{
+  "title": "Guides",
+  "pages": [
+    "runtime",
+    "permissions",
+    "distribution"
+  ],
+  "defaultOpen": true
+}

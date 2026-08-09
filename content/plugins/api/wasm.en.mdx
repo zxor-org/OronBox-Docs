@@ -1,0 +1,43 @@
+---
+title: Wasm modules
+description: Load and call WASM modules from hybrid plugins
+---
+
+Hybrid plugins can load `.wasm` modules from plugin storage and call their exported functions through `OronBox.wasm`.
+
+This namespace is only available to plugins with `runtime: "hybrid"`; `js` and legacy plugins get an error.
+
+## load(path, options)
+
+Reads the `.wasm` bytes from plugin storage and instantiates the module; when `options.wasi` is not `false`, the WASI sandbox is attached. Returns a frozen module object:
+
+```js
+const mod = await OronBox.wasm.load('/lib/codec.wasm');
+const id = mod.id; // "wasm_1"
+mod.call('exportName', arg1, arg2);          // call an export, returns the array of export values
+mod.readMemory(offset, length, 'memory');    // read memory, returns base64
+mod.writeMemory(offset, data, 'memory');     // write memory, data is base64
+mod.dispose();                               // destroy the instance
+```
+
+- `id` looks like `wasm_1`, allocated incrementally
+- `call` returns an array of the exported function's return values
+- The `memory` argument of `readMemory` / `writeMemory` defaults to `'memory'`
+- Instances are cached per plugin and destroyed together when the plugin closes
+
+## Example
+
+```js
+globalThis.activate = async (plugin) => {
+  const mod = await OronBox.wasm.load('/lib/codec.wasm');
+  const result = mod.call('decode', 0, 16);
+  console.info('decode result:', result);
+  mod.dispose();
+};
+```
+
+The `.wasm` file must be bundled in the plugin package (e.g. at `/lib/codec.wasm`) and is loaded from the sandbox path at runtime.
+
+## Permissions
+
+`wasm.*` requires no permission declaration; only the `hybrid` runtime is required.

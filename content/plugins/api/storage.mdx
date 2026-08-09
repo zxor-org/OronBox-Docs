@@ -1,0 +1,65 @@
+---
+title: Storage 键值存储
+description: 键值持久化存储：get / set / remove / clear
+---
+
+
+持久化的键值对存储，卸载插件时一并清除
+
+值可以是任意可 JSON 序列化的数据
+
+## 方法
+
+### get(key)
+
+```js
+const value = await OronBox.storage.get('lastVisit');
+// 返回存储的值，从未设置过则返回 undefined
+```
+
+### set(key, value)
+
+```js
+await OronBox.storage.set('lastVisit', new Date().toISOString());
+await OronBox.storage.set('theme', 'dark');
+await OronBox.storage.set('prefs', { fontSize: 14, lineHeight: 1.5 });
+```
+
+### remove(key)
+
+```js
+await OronBox.storage.remove('theme');
+```
+
+### clear()
+
+```js
+await OronBox.storage.clear();
+```
+
+## 完整示例：访问记录
+
+```js
+globalThis.activate = async (plugin) => {
+  let lastVisit = (await OronBox.storage.get('lastVisit')) || 'Never';
+  let visitCount = (await OronBox.storage.get('visitCount')) || 0;
+  const { Column, Text, Button } = OronBox.ui;
+
+  const recordVisit = async () => {
+    visitCount++;
+    lastVisit = new Date().toLocaleString();
+    await OronBox.storage.set('visitCount', visitCount);
+    await OronBox.storage.set('lastVisit', lastVisit);
+  };
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      Text(`Last visit: ${lastVisit}`),
+      Text(`Visits: ${visitCount}`),
+      Button('Record visit', { onClick: OronBox.ui.action(recordVisit, render) }),
+    ]),
+  );
+
+  render();
+};
+```

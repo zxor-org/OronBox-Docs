@@ -1,0 +1,63 @@
+---
+title: Watchface 表盘
+description: 表盘管理：列出与切换
+---
+
+
+列出当前设备的表盘并切换
+
+## 方法
+
+`deviceId` 省略时作用于当前活动设备
+
+### list(deviceId?)
+
+```js
+const watchfaces = await OronBox.watchface.list();
+// [{ id: '12345', name: 'Classic', current: true }, ...]
+```
+
+### set(watchfaceId, deviceId?)
+
+```js
+await OronBox.watchface.set('67890');
+```
+
+## 完整示例：表盘切换器
+
+```js
+globalThis.activate = async (plugin) => {
+  let wfList = [];
+  let result = 'Tap to list watchfaces';
+  const { Column, Text, Button } = OronBox.ui;
+
+  const render = () => {
+    const nodes = [
+      Button('List', {
+        onClick: OronBox.ui.action(async () => {
+          wfList = await OronBox.watchface.list();
+          result = wfList.map(w => `${w.name} ${w.current ? '←active' : ''}`).join('\n');
+        }, render),
+      }),
+      Text(result),
+    ];
+
+    for (const wf of wfList) {
+      if (wf.current) continue;
+      nodes.push(Button(`Switch to ${wf.name}`, {
+        onClick: OronBox.ui.action(async () => {
+          await OronBox.watchface.set(wf.id);
+          result = `Switched to ${wf.name}`;
+        }, render),
+      }));
+    }
+    return OronBox.ui.render(Column({ gap: 8 }, nodes));
+  };
+
+  render();
+};
+```
+
+## 权限
+
+在 manifest 中声明 `device` 权限；`list` 是中风险，`set` 是高风险

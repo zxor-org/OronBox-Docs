@@ -1,0 +1,46 @@
+---
+title: Installation
+description: Installation packages per platform, system requirements and the first-run wizard
+---
+
+## System requirements
+
+| Platform | Requirements |
+| --- | --- |
+| Windows | Windows 10 (64-bit) or newer |
+| macOS | macOS 10.15 or newer (universal for Intel and Apple Silicon) |
+| Linux | A logged-in graphical desktop session; any distribution |
+| Android | Android 7.0 (API 24) or newer |
+| Web | Chrome / Edge with Web Serial and Web Bluetooth support |
+
+iOS is not supported.
+
+## Getting the installer
+
+Open the [download page](/en/download) and pick your platform:
+
+- **Windows**: the `.exe` installer, or a `.zip` archive
+- **macOS**: the `.dmg` image (universal for Intel and Apple Silicon)
+- **Linux**: `.AppImage`, `.flatpak`, `.deb`, `.rpm`, `.pkg.tar.zst` or `.tar.gz`, whichever fits your distribution
+- **Android**: the `.apk` file. Use `arm64-v8a` for most phones, `armeabi-v7a` for 32-bit devices, `x86_64` for emulators
+- **Web**: a self-hostable static bundle (`.zip`)
+
+> The "Download" button on the download page detects your system automatically. Linux users get a menu to pick the exact package format.
+
+## First-run wizard
+
+The first launch walks you through five steps:
+
+1. **Welcome**: an overview of OronBox (device connection, resource center, plugin system, multi-platform, open source)
+2. **User agreement & privacy policy**: you must **scroll to the bottom** before the "I have read and agree" checkbox becomes available; you cannot continue without accepting
+3. **Optional sign-in**: you can log into BandBBS, Xiaomi or Huami now, or skip it and sign in later from Settings. Xiaomi and Huami sign-in happen locally
+4. **CDN speed test**: the app picks the fastest download node automatically
+5. **Done**: you land in the app
+
+## Desktop background service
+
+On Windows / macOS / Linux, the app runs a background service that owns Bluetooth connections and tasks. The GUI and the command line share this service; you don't manage it yourself.
+
+## Replaying the wizard
+
+To see the welcome wizard again, use Settings → Advanced → Replay onboarding.

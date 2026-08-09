@@ -1,0 +1,60 @@
+---
+title: Interconnect
+description: "Communicate with apps running on the device: send / onMessage"
+---
+
+
+Communicate with apps running on the device (quick apps etc.): send text messages to a target app identified by package name, or receive messages from device apps. OronBox provides the transport only — no file transfer, chunking or ack protocol.
+
+
+### send(packageName, data, deviceId?)
+
+Send a message to a target app on the device.
+
+```js
+await OronBox.interconnect.send('com.example.target', 'hello from plugin');
+```
+
+### onMessage(callback)
+
+Start listening for messages from device apps. Returns a stop function.
+
+```js
+const stop = await OronBox.interconnect.onMessage(({ packageName, data }) => {
+  console.info(`Received from ${packageName}: ${data}`);
+});
+
+// Stop listening
+await stop();
+```
+
+## Example: Messenger
+
+```js
+globalThis.activate = async (plugin) => {
+  let target = '';
+  let message = '';
+  let received = '';
+  const { Column, Text, TextField, Button } = OronBox.ui;
+
+  OronBox.interconnect.onMessage(({ packageName, data }) => {
+    received = `[${packageName}] ${data}`;
+    render();
+  });
+
+  const render = () => OronBox.ui.render(
+    Column({ gap: 8 }, [
+      TextField({ value: target, placeholder: 'Target package', onChange: v => { target = v; } }),
+      TextField({ value: message, placeholder: 'Message', onChange: v => { message = v; } }),
+      Button('Send', { onClick: () => OronBox.interconnect.send(target, message) }),
+      Text(received || 'Waiting...'),
+    ]),
+  );
+
+  render();
+};
+```
+
+## Permission
+
+Declare `interconnect` in the manifest. Medium-risk.
