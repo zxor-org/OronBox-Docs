@@ -1,6 +1,7 @@
 'use client';
 
 import { firstResponding, isGitHubUrl } from '@/lib/download-proxy';
+import { announceDownloadToast } from '@/components/download-toast';
 
 /**
  * No page-load speed test: the fastest mirror is chosen right before each
@@ -8,13 +9,25 @@ import { firstResponding, isGitHubUrl } from '@/lib/download-proxy';
  */
 export function useDownloadProxy() {
   /** Measure the URL, then navigate through the fastest mirror. */
-  const goto = (url: string) => {
+  const goto = (
+    url: string,
+    githubToastMessage = 'GitHub镜像测速中...',
+    downloadToastMessage?: string,
+  ) => {
+    const startDownload = (target: string) => {
+      if (downloadToastMessage) announceDownloadToast(downloadToastMessage);
+      window.setTimeout(() => {
+        window.location.href = target;
+      }, 120);
+    };
+
     if (!isGitHubUrl(url)) {
-      window.location.href = url;
+      startDownload(url);
       return;
     }
+    announceDownloadToast(githubToastMessage);
     firstResponding(url).then((candidate) => {
-      window.location.href = candidate.wrap(url);
+      startDownload(candidate.wrap(url));
     });
   };
 

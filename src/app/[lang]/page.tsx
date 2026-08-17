@@ -25,7 +25,10 @@ import { withLocale } from '@/lib/i18n';
 import { baseOptions } from '@/lib/layout.shared';
 import { sections } from '@/lib/shared';
 import { getRelease, linuxDownloadOptions, recommendedFor, type Os } from '@/lib/releases';
-import { DownloadButton } from '@/components/download-detect';
+import {
+  DownloadButton,
+  type AndroidDownloadOption,
+} from '@/components/download-detect';
 import { cn } from '@/lib/cn';
 import type { ComponentType, CSSProperties } from 'react';
 import { Reveal } from '@/components/reveal';
@@ -69,6 +72,13 @@ const copy = {
       web: { zh: ' Web 版', en: ' for Web' },
     },
     downloadFallback: { zh: '更多下载选项', en: 'More download options' },
+    lanzou: { zh: '蓝奏云网盘', en: 'Lanzou cloud drive' },
+    githubRelease: { zh: 'GitHub Release', en: 'GitHub Release' },
+    githubMirrorTesting: {
+      zh: 'GitHub镜像测速中...',
+      en: 'Testing GitHub mirrors...',
+    },
+    downloadStarting: { zh: '开始下载...', en: 'Starting download...' },
   },
   preview: {
     title: { zh: '界面一览', en: 'Take a look' },
@@ -249,6 +259,17 @@ export default async function HomePage({
     fallback: pick(copy.cta.downloadFallback),
   };
   const linuxOptions = linuxDownloadOptions(release);
+  const androidOption = recommendedFor(release, 'android', 'arm64');
+  const androidOptions: AndroidDownloadOption[] = [
+    {
+      url: 'https://cpwdxbd.lanzoue.com/oronbox',
+      label: pick(copy.cta.lanzou),
+      showDownloadToast: false,
+    },
+    ...(androidOption
+      ? [{ url: androidOption.url, label: pick(copy.cta.githubRelease) }]
+      : []),
+  ];
 
   return (
     <HomeLayout {...baseOptions(lang)}>
@@ -313,6 +334,9 @@ export default async function HomePage({
               downloadPageHref={withLocale(lang, '/download')}
               variant="tonal"
               linuxOptions={linuxOptions}
+              androidOptions={androidOptions}
+              githubToastMessage={pick(copy.cta.githubMirrorTesting)}
+              downloadToastMessage={pick(copy.cta.downloadStarting)}
             />
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">

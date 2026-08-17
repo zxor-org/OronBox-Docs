@@ -26,10 +26,14 @@ export function DownloadOptionButton({
   option,
   recommended,
   recommendedLabel,
+  githubToastMessage,
+  downloadToastMessage,
 }: {
   option: DownloadOption;
   recommended: boolean;
   recommendedLabel: string;
+  githubToastMessage?: string;
+  downloadToastMessage?: string;
 }) {
   const { goto } = useDownloadProxy();
 
@@ -38,7 +42,7 @@ export function DownloadOptionButton({
       href={option.url}
       onClick={(e) => {
         e.preventDefault();
-        goto(option.url);
+        goto(option.url, githubToastMessage, downloadToastMessage);
       }}
       className={cn(
         'inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-medium no-underline',

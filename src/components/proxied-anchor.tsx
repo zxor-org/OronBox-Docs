@@ -12,10 +12,14 @@ export function ProxiedAnchor({
   href,
   className,
   children,
+  githubToastMessage,
+  downloadToastMessage,
 }: {
   href: string;
   className?: string;
   children: ReactNode;
+  githubToastMessage?: string;
+  downloadToastMessage?: string;
 }) {
   const { goto } = useDownloadProxy();
 
@@ -24,7 +28,7 @@ export function ProxiedAnchor({
       href={href}
       onClick={(e) => {
         e.preventDefault();
-        goto(href);
+        goto(href, githubToastMessage, downloadToastMessage);
       }}
       className={className}
     >

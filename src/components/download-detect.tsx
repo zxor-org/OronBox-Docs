@@ -12,6 +12,12 @@ export interface Pick {
   format: string;
 }
 
+export interface AndroidDownloadOption {
+  url: string;
+  label: string;
+  showDownloadToast?: boolean;
+}
+
 type DetectedOs = Os | 'ios' | 'unknown';
 
 interface Detection {
@@ -77,6 +83,9 @@ export function DownloadButton({
   variant = 'filled',
   className,
   linuxOptions,
+  androidOptions,
+  githubToastMessage,
+  downloadToastMessage,
 }: {
   /** recommended asset per platform, computed server-side */
   picks: Partial<Record<Os, Pick>>;
@@ -93,6 +102,12 @@ export function DownloadButton({
   className?: string;
   /** all Linux packages; when present, a detected Linux user gets a dropdown instead of a direct link */
   linuxOptions?: LinuxOption[];
+  /** alternate Android download sources shown to detected Android users */
+  androidOptions?: AndroidDownloadOption[];
+  /** localized notice shown while a GitHub mirror is being measured */
+  githubToastMessage?: string;
+  /** localized notice shown immediately before the browser starts downloading */
+  downloadToastMessage?: string;
 }) {
   const [target, setTarget] = useState<{ href: string; label: string } | null>(
     null,
@@ -130,6 +145,8 @@ export function DownloadButton({
   const { goto } = useDownloadProxy();
 
   const isLinuxMenu = detected === 'linux' && (linuxOptions?.length ?? 0) > 0;
+  const isAndroidMenu =
+    detected === 'android' && (androidOptions?.length ?? 0) > 0;
 
   // filter to the detected architecture; if the filter empties the list
   // (e.g. arch detection failed), fall back to showing every package
@@ -180,7 +197,7 @@ export function DownloadButton({
   // fastest mirror (never a raw GitHub download)
   const intercept = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    goto(rawHref);
+    goto(rawHref, githubToastMessage, downloadToastMessage);
   };
 
   const btnClass = cn(
@@ -194,7 +211,7 @@ export function DownloadButton({
 
   return (
     <>
-      {isLinuxMenu ? (
+      {isLinuxMenu || isAndroidMenu ? (
         <button
           ref={btnRef}
           type="button"
@@ -223,24 +240,46 @@ export function DownloadButton({
             className="fixed z-50 flex max-h-[60vh] min-w-52 -translate-x-1/2 flex-col overflow-y-auto rounded-2xl bg-[var(--md-sys-color-surface-container-high)] p-2 shadow-xl"
             onClick={() => setOpen(false)}
           >
-            {menuOptions.map((option) => (
-              <a
-                key={option.url}
-                href={option.url}
-                onClick={(e) => {
-                  e.preventDefault();
-                  goto(option.url);
-                }}
-                role="menuitem"
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-fd-foreground)] no-underline hover:bg-[var(--md-sys-color-surface-container-highest)]"
-              >
-                <Download className="size-4 shrink-0 text-fd-muted-foreground" />
-                <span>
-                  {option.format}
-                  {option.archLabel ? ` · ${option.archLabel}` : ''}
-                </span>
-              </a>
-            ))}
+            {isAndroidMenu
+              ? androidOptions?.map((option) => (
+                  <a
+                    key={option.url}
+                    href={option.url}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goto(
+                        option.url,
+                        githubToastMessage,
+                        option.showDownloadToast === false
+                          ? undefined
+                          : downloadToastMessage,
+                      );
+                    }}
+                    role="menuitem"
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-fd-foreground)] no-underline hover:bg-[var(--md-sys-color-surface-container-highest)]"
+                  >
+                    <Download className="size-4 shrink-0 text-fd-muted-foreground" />
+                    <span>{option.label}</span>
+                  </a>
+                ))
+              : menuOptions.map((option) => (
+                  <a
+                    key={option.url}
+                    href={option.url}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goto(option.url, githubToastMessage, downloadToastMessage);
+                    }}
+                    role="menuitem"
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-fd-foreground)] no-underline hover:bg-[var(--md-sys-color-surface-container-highest)]"
+                  >
+                    <Download className="size-4 shrink-0 text-fd-muted-foreground" />
+                    <span>
+                      {option.format}
+                      {option.archLabel ? ` · ${option.archLabel}` : ''}
+                    </span>
+                  </a>
+                ))}
           </div>,
           document.body,
         )}

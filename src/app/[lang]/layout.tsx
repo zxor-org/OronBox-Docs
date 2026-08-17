@@ -1,6 +1,7 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import '../global.css';
 import { i18n, i18nUI } from '@/lib/i18n';
+import { DownloadToast } from '@/components/download-toast';
 import type { Metadata } from 'next';
 
 export async function generateMetadata({
@@ -43,6 +44,7 @@ export default async function Layout({
         href="https://cdn.jsdelivr.net/npm/@fontsource/google-sans-flex@5.3.1/600.css"
       />
       <body className="flex flex-col min-h-screen">
+        <DownloadToast />
         <RootProvider i18n={i18nUI.provider(lang)}>{children}</RootProvider>
       </body>
     </html>

@@ -52,6 +52,11 @@ const copy = {
       web: { zh: ' Web 版', en: ' for Web' },
     } as Record<Os, { zh: string; en: string }>,
     fallback: { zh: '查看全部下载选项', en: 'See all download options' },
+    githubMirrorTesting: {
+      zh: 'GitHub镜像测速中...',
+      en: 'Testing GitHub mirrors...',
+    },
+    downloadStarting: { zh: '开始下载...', en: 'Starting download...' },
   },
   recommended: { zh: '推荐', en: 'Recommended' },
   platforms: {
@@ -240,6 +245,8 @@ export default async function DownloadPage({
               variant="filled"
               className="min-h-14 px-8 text-base"
               linuxOptions={linuxOptions}
+              githubToastMessage={pick(copy.hero.githubMirrorTesting)}
+              downloadToastMessage={pick(copy.hero.downloadStarting)}
             />
           </div>
         </div>
@@ -300,6 +307,8 @@ export default async function DownloadPage({
                                   option.arch === 'x64'
                                 }
                                 recommendedLabel={pick(copy.recommended)}
+                                githubToastMessage={pick(copy.hero.githubMirrorTesting)}
+                                downloadToastMessage={pick(copy.hero.downloadStarting)}
                               />
                             ))}
                           </div>
@@ -322,6 +331,8 @@ export default async function DownloadPage({
                               option.arch === 'any')
                         }
                         recommendedLabel={pick(copy.recommended)}
+                        githubToastMessage={pick(copy.hero.githubMirrorTesting)}
+                        downloadToastMessage={pick(copy.hero.downloadStarting)}
                       />
                     ))}
                   </div>
@@ -339,6 +350,8 @@ export default async function DownloadPage({
                 <ProxiedAnchor
                   href={release.checksumsUrl}
                   className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-high)] px-4 text-sm font-medium text-[var(--color-fd-foreground)] no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)]"
+                  githubToastMessage={pick(copy.hero.githubMirrorTesting)}
+                  downloadToastMessage={pick(copy.hero.downloadStarting)}
                 >
                   <FileCheck2 className="size-4" />
                   {pick(copy.footer.checksums)}
@@ -347,6 +360,8 @@ export default async function DownloadPage({
               <ProxiedAnchor
                 href={release.pageUrl.replace(/\/tag\/.*$/, '')}
                 className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-high)] px-4 text-sm font-medium text-[var(--color-fd-foreground)] no-underline transition-[background-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)]"
+                githubToastMessage={pick(copy.hero.githubMirrorTesting)}
+                downloadToastMessage={pick(copy.hero.downloadStarting)}
               >
                 <History className="size-4" />
                 {pick(copy.footer.allReleases)}
